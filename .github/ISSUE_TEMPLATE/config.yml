@@ -1,0 +1,6 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Reportar una vulnerabilidad
+    url: https://github.com/Yojemr/AuralWarden/security/policy
+    about: No publiques vulnerabilidades ni datos sensibles como una incidencia abierta; consulta primero la política de seguridad.
+

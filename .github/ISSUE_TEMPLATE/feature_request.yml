@@ -1,0 +1,37 @@
+name: Proponer una función
+description: Sugiere una mejora compatible con el enfoque local de AuralWarden.
+title: "[Mejora]: "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Necesidad
+      description: Explica el problema o la situación que debería resolver la función.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Propuesta
+      description: Describe el comportamiento esperado desde el punto de vista del usuario.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternativas consideradas
+
+  - type: checkboxes
+    id: principles
+    attributes:
+      label: Principios del proyecto
+      options:
+        - label: La propuesta puede funcionar localmente o explica claramente por qué necesita red.
+          required: true
+        - label: La propuesta no requiere publicar datos personales, credenciales ni contenido privado.
+          required: true
+

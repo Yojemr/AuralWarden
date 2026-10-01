@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Yojemr/AuralWarden/agent-control.schema.json",
+  "title": "AuralWarden local control request",
+  "type": "object",
+  "required": ["action"],
+  "properties": {
+    "action": {
+      "enum": [
+        "capabilities",
+        "status",
+        "set_source",
+        "set_hotwords",
+        "start",
+        "stop",
+        "transcript",
+        "alerts",
+        "show"
+      ]
+    },
+    "source": {"type": "string", "maxLength": 4096},
+    "limit": {"type": "integer", "minimum": 1, "maximum": 200},
+    "hotwords": {
+      "type": "array",
+      "maxItems": 100,
+      "items": {
+        "oneOf": [
+          {"type": "string", "minLength": 1, "maxLength": 120},
+          {
+            "type": "object",
+            "required": ["phrase"],
+            "properties": {
+              "phrase": {"type": "string", "minLength": 1, "maxLength": 120},
+              "threshold": {"type": "integer", "minimum": 50, "maximum": 100},
+              "enabled": {"type": "boolean"},
+              "speaker_profile": {"type": "string"}
+            },
+            "additionalProperties": false
+          }
+        ]
+      }
+    }
+  },
+  "additionalProperties": false
+}

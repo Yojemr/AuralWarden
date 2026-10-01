@@ -1,0 +1,26 @@
+{
+  "packages": {
+    "ctranslate2": {"version": "4.8.1", "files": ["CTranslate2-LICENSE"]},
+    "tokenizers": {"version": "0.23.2", "files": ["tokenizers-LICENSE"]},
+    "flatbuffers": {"version": "25.12.19", "files": ["flatbuffers-LICENSE"]},
+    "sherpa-onnx-bin": {"version": "1.13.6", "files": ["sherpa-onnx-LICENSE"]},
+    "sherpa-onnx-core": {"version": "1.13.6", "files": ["sherpa-onnx-LICENSE"]},
+    "pyside6": {"version": "6.11.2", "files": ["Qt-GPL-3.0-only.txt", "Qt-LGPL-3.0-only.txt", "Qt-Qt-GPL-exception-1.0.txt", "Qt-BSD-3-Clause.txt", "Qt-Apache-2.0.txt", "Qt-GPL-2.0-only.txt", "Qt-GFDL-1.3-no-invariants-only.txt"]},
+    "pyside6_essentials": {"version": "6.11.2", "files": ["Qt-GPL-3.0-only.txt", "Qt-LGPL-3.0-only.txt", "Qt-Qt-GPL-exception-1.0.txt"]},
+    "pyside6_addons": {"version": "6.11.2", "files": ["Qt-GPL-3.0-only.txt", "Qt-LGPL-3.0-only.txt", "Qt-Qt-GPL-exception-1.0.txt"]},
+    "shiboken6": {"version": "6.11.2", "files": ["Qt-GPL-3.0-only.txt", "Qt-LGPL-3.0-only.txt", "Qt-Qt-GPL-exception-1.0.txt"]}
+  },
+  "files": {
+    "CTranslate2-LICENSE": {"sha256": "54AA79D9FE3C09E67A16DCD95B9E88676405A6EC174EFDA31036983CF7672ECB", "url": "https://raw.githubusercontent.com/OpenNMT/CTranslate2/0d8bcd362ac75ef860ef161d6f0efad0ae439ff0/LICENSE"},
+    "tokenizers-LICENSE": {"sha256": "C71D239DF91726FC519C6EB72D318EC65820627232B2F796219E87DCF35D0AB4", "url": "https://raw.githubusercontent.com/huggingface/tokenizers/88a4498ad4ea1a9487b0a9b0ff881383fd5a06a3/LICENSE"},
+    "flatbuffers-LICENSE": {"sha256": "CFC7749B96F63BD31C3C42B5C471BF756814053E847C10F3EB003417BC523D30", "url": "https://raw.githubusercontent.com/google/flatbuffers/7e163021e59cca4f8e1e35a7c828b5c6b7915953/LICENSE"},
+    "sherpa-onnx-LICENSE": {"sha256": "CFC7749B96F63BD31C3C42B5C471BF756814053E847C10F3EB003417BC523D30", "url": "https://raw.githubusercontent.com/k2-fsa/sherpa-onnx/1cb484af5e69d3c7803c1eb0b3b5ab8041e0e911/LICENSE"},
+    "Qt-Apache-2.0.txt": {"sha256": "E3BA223BB1423F0AAD8C3DFCE0FE3148DB48926D41E6FBC3AFBBF5FF9E1C89CB", "url": "https://raw.githubusercontent.com/pyside/pyside-setup/24627cd36e1593adf22eb1f2950e4248e7bcc1ec/LICENSES/Apache-2.0.txt"},
+    "Qt-BSD-3-Clause.txt": {"sha256": "62803A6FCCEEF9091A129D7293D2469EA332B35D30F5E1BC4C628A9F35F3D29C", "url": "https://raw.githubusercontent.com/pyside/pyside-setup/24627cd36e1593adf22eb1f2950e4248e7bcc1ec/LICENSES/BSD-3-Clause.txt"},
+    "Qt-GFDL-1.3-no-invariants-only.txt": {"sha256": "110535522396708CEA37C72A802C5E7E81391139F5F7985631C93EF242B206A4", "url": "https://raw.githubusercontent.com/pyside/pyside-setup/24627cd36e1593adf22eb1f2950e4248e7bcc1ec/LICENSES/GFDL-1.3-no-invariants-only.txt"},
+    "Qt-GPL-2.0-only.txt": {"sha256": "8177F97513213526DF2CF6184D8FF986C675AFB514D4E68A404010521B880643", "url": "https://raw.githubusercontent.com/pyside/pyside-setup/24627cd36e1593adf22eb1f2950e4248e7bcc1ec/LICENSES/GPL-2.0-only.txt"},
+    "Qt-GPL-3.0-only.txt": {"sha256": "8CEB4B9EE5ADEDDE47B31E975C1D90C73AD27B6B165A1DCD80C7C545EB65B903", "url": "https://raw.githubusercontent.com/pyside/pyside-setup/24627cd36e1593adf22eb1f2950e4248e7bcc1ec/LICENSES/GPL-3.0-only.txt"},
+    "Qt-LGPL-3.0-only.txt": {"sha256": "DA7EABB7BAFDF7D3AE5E9F223AA5BDC1EECE45AC569DC21B3B037520B4464768", "url": "https://raw.githubusercontent.com/pyside/pyside-setup/24627cd36e1593adf22eb1f2950e4248e7bcc1ec/LICENSES/LGPL-3.0-only.txt"},
+    "Qt-Qt-GPL-exception-1.0.txt": {"sha256": "40678D338CE53CD93F8B22B281A2ECBCAA3EE65CE60B25FFB0C462B0530846B2", "url": "https://raw.githubusercontent.com/pyside/pyside-setup/24627cd36e1593adf22eb1f2950e4248e7bcc1ec/LICENSES/Qt-GPL-exception-1.0.txt"}
+  }
+}

@@ -1,0 +1,87 @@
+[build-system]
+requires = ["setuptools>=75", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "auralwarden"
+version = "1.0.2"
+description = "Local-first live transcription, hotword monitoring, and event clipping for Windows."
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{ name = "Yojemr" }]
+license = "GPL-3.0-only"
+license-files = ["LICENSE"]
+dependencies = [
+  "psutil>=6,<8",
+  "RapidFuzz>=3.9,<4",
+  "numpy>=2,<3",
+]
+
+[project.optional-dependencies]
+capture = [
+  "streamlink>=8,<9",
+  "yt-dlp>=2025.1,<2027",
+  "PyAudioWPatch>=0.2.12.8,<0.3; sys_platform == 'win32'",
+  "pycaw>=20251023,<20270000; sys_platform == 'win32'",
+]
+stt = [
+  "faster-whisper>=1.1,<2",
+]
+cuda = [
+  "nvidia-cublas-cu12>=12,<13; sys_platform == 'win32'",
+]
+diarization = [
+  "sherpa-onnx>=1.12,<2",
+  "sherpa-onnx-bin>=1.12,<2; sys_platform == 'win32'",
+]
+ui = [
+  "PySide6>=6.8,<7",
+  "QtAwesome>=1.3,<2",
+]
+desktop-cpu = [
+  "streamlink>=8,<9",
+  "yt-dlp>=2025.1,<2027",
+  "PyAudioWPatch>=0.2.12.8,<0.3; sys_platform == 'win32'",
+  "pycaw>=20251023,<20270000; sys_platform == 'win32'",
+  "faster-whisper>=1.1,<2",
+  "sherpa-onnx>=1.12,<2",
+  "sherpa-onnx-bin>=1.12,<2; sys_platform == 'win32'",
+  "PySide6>=6.8,<7",
+  "QtAwesome>=1.3,<2",
+]
+dev = [
+  "pytest>=8,<10",
+  "PyInstaller>=6,<7",
+]
+all = [
+  "streamlink>=8,<9",
+  "yt-dlp>=2025.1,<2027",
+  "PyAudioWPatch>=0.2.12.8,<0.3; sys_platform == 'win32'",
+  "pycaw>=20251023,<20270000; sys_platform == 'win32'",
+  "faster-whisper>=1.1,<2",
+  "nvidia-cublas-cu12>=12,<13; sys_platform == 'win32'",
+  "sherpa-onnx>=1.12,<2",
+  "sherpa-onnx-bin>=1.12,<2; sys_platform == 'win32'",
+  "PySide6>=6.8,<7",
+  "QtAwesome>=1.3,<2",
+  "pytest>=8,<10",
+  "PyInstaller>=6,<7",
+]
+
+[project.scripts]
+auralwarden = "auralwarden.cli:main"
+auralwarden-gui = "auralwarden.gui_main:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"auralwarden" = ["model_downloads.json"]
+"auralwarden.ui" = ["assets/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

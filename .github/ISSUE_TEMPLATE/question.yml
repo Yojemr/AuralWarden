@@ -1,0 +1,37 @@
+name: Pregunta o ayuda
+description: Solicita orientación para instalar, configurar o utilizar AuralWarden.
+title: "[Pregunta]: "
+labels:
+  - question
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe tu duda sin adjuntar enlaces privados, cookies, credenciales, perfiles de voz, grabaciones ni transcripciones personales.
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Pregunta
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Versión de AuralWarden
+      placeholder: "1.0.1"
+
+  - type: textarea
+    id: attempted
+    attributes:
+      label: Qué intentaste
+      description: Incluye únicamente configuraciones o mensajes que no revelen información privada.
+
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacidad
+      options:
+        - label: Confirmo que la consulta y sus adjuntos no contienen datos privados ni credenciales.
+          required: true

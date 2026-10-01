@@ -1,0 +1,50 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyd
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Environments and builds
+.venv/
+build/
+dist/
+outputs/
+*.egg-info/
+*.spec
+
+# Local archives and personal evidence
+Archivo/
+design/qa/
+design/references/
+design-qa.md
+
+# Runtime data
+data/
+work/
+logs/
+recordings/
+clips/
+transcripts/
+models/
+cache/
+portable.flag
+
+# Private local material
+.env
+.env.*
+!.env.example
+cookies.txt
+*.cookies.txt
+secrets.json
+config.local.json
+startup-error.log
+
+# Editors and operating systems
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+desktop.ini

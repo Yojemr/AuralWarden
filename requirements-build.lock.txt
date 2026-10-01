@@ -33,7 +33,7 @@ pluggy==1.6.0
 protobuf==7.36.1
 psutil==7.2.2
 pyaudiowpatch==0.2.12.8
-pycaw==20251023
+pycaw==20260927
 pycountry==26.2.16
 pycparser==3.0
 pycryptodome==3.23.0

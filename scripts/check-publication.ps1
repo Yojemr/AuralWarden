@@ -26,7 +26,7 @@ $requiredFiles = @(
     "requirements-build.lock.txt",
     "docs\GITHUB_PUBLISHING.md",
     "docs\RELEASE_CHECKLIST.md",
-    "docs\RELEASE_NOTES_1.0.2.md",
+    "docs\RELEASE_NOTES_1.0.3.md",
     ".github\CODEOWNERS",
     ".github\dependabot.yml",
     ".github\release.yml",

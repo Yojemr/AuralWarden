@@ -37,6 +37,7 @@ from auralwarden.transcribers import (
 )
 from auralwarden.transcript import TranscriptBuffer
 from auralwarden.windows_audio import WasapiPcmCapture
+from auralwarden.window_video import WindowPcmCapture, validate_target, window_target
 
 
 class EventRelay(QObject):
@@ -105,7 +106,7 @@ def build_engine(
     *,
     realtime_demo: bool = True,
 ) -> MonitoringEngine:
-    if settings.source_url.startswith("demo://"):
+    if settings.source_kind == "url" and settings.source_url.startswith("demo://"):
         return MonitoringEngine(
             MemoryPcmCapture(
                 duration_seconds=90,
@@ -184,17 +185,25 @@ def build_engine(
                 num_threads=effective.diarization_threads,
             )
         )
-    if settings.source_kind in {"system_audio", "microphone"}:
-        if settings.save_event_video_clips or settings.save_full_video:
+    if settings.source_kind in {"system_audio", "microphone", "window_capture"}:
+        if settings.source_kind != "window_capture" and (settings.save_event_video_clips or settings.save_full_video):
             raise ValueError(
                 "El micrófono y el audio del sistema no admiten grabación de vídeo."
             )
         selected_device = (
             settings.system_audio_device
-            if settings.source_kind == "system_audio"
+            if settings.source_kind in {"system_audio", "window_capture"}
             else settings.microphone_device
         )
-        source = WasapiPcmCapture(settings.source_kind, selected_device)
+        if settings.source_kind == "window_capture":
+            target = window_target(settings.window_capture_hwnd)
+            if (target.pid != settings.window_capture_pid
+                    or target.created_at != settings.window_capture_created_at):
+                raise ValueError("La ventana original cambió. Selecciónala nuevamente antes de grabar.")
+            validate_target(target)
+            source = WindowPcmCapture(target, selected_device)
+        else:
+            source = WasapiPcmCapture(settings.source_kind, selected_device)
         return MonitoringEngine(
             source,
             transcriber,

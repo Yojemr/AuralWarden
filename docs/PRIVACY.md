@@ -12,6 +12,8 @@ Los enlaces públicos de Twitch y Kick se resuelven mediante Streamlink sin inte
 
 El modo **Audio del sistema** recibe la mezcla completa del dispositivo seleccionado. Puede incluir sonidos de otras aplicaciones además de la fuente que motivó la sesión. La interfaz lo identifica expresamente y la captura solo comienza al pulsar **Iniciar monitoreo**.
 
+El modo **Ventana + audio del PC** graba únicamente la ventana seleccionada, además de la mezcla completa de la salida de audio. Si el usuario cambia de pestaña en esa ventana, el nuevo contenido queda dentro de la grabación. No captura automáticamente todo el escritorio, no selecciona ventanas al iniciar y no sustituye una ventana desaparecida por otra. La captura de imágenes se realiza en un proceso auxiliar local; no se transmite a servicios externos. La grabación completa y los clips continúan siendo opciones independientes.
+
 La monitorización silenciosa modifica temporalmente el silencio del dispositivo completo. Requiere confirmación, guarda únicamente identificador, nombre, volumen y estado anteriores en `silent-audio-state.json`, y elimina ese archivo al restaurar. No contiene audio ni texto. Una hotword activa la salida y la deja encendida; al detener sin alerta se recupera el estado original.
 
 El modo **Micrófono** puede captar conversaciones cercanas. Debe usarse únicamente con las autorizaciones y avisos aplicables. La grabación completa continúa desactivada por defecto y los clips conservan solo los intervalos configurados.

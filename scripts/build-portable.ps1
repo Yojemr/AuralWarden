@@ -14,6 +14,7 @@ param(
 $ErrorActionPreference = "Stop"
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $venvPython = Join-Path $projectRoot ".venv\Scripts\python.exe"
+$env:PYINSTALLER_CONFIG_DIR = Join-Path $projectRoot "work\pyinstaller-cache"
 
 # Do not let unrelated native DLL directories inherited from the Codex runtime
 # override the Visual C++ runtime selected for the portable application.
@@ -32,7 +33,7 @@ function Assert-NativeSuccess([string]$Step) {
 & $venvPython -c "import PyInstaller, auralwarden"
 Assert-NativeSuccess "Builder import"
 if ($WithCapture) {
-    & $venvPython -c "import streamlink, yt_dlp, pyaudiowpatch, pycaw, comtypes"
+    & $venvPython -c "import streamlink, yt_dlp, pyaudiowpatch, pycaw, comtypes, windows_capture, av"
     Assert-NativeSuccess "Capture imports"
 }
 if ($WithStt) {
@@ -100,6 +101,7 @@ if ($WithCapture) {
         "--hidden-import", "pyaudiowpatch",
         "--hidden-import", "pycaw.pycaw",
         "--hidden-import", "comtypes.client"
+        "--collect-all", "windows_capture"
     ) + $arguments
 }
 if ($WithStt) {

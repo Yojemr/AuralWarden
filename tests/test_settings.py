@@ -22,7 +22,7 @@ def test_settings_round_trip(tmp_path: Path) -> None:
     assert restored.transcription_window_seconds == 6.0
     assert restored.transcription_overlap_seconds == 2.0
     assert restored.low_confidence_second_pass_threshold == 0.62
-    assert restored.schema_version == 12
+    assert restored.schema_version == 13
     assert restored.dynamic_load_adaptation is True
     assert restored.interface_scale_percent == 100
     assert restored.allow_local_control is False
@@ -46,7 +46,7 @@ def test_old_settings_are_migrated_with_video_defaults(tmp_path: Path) -> None:
 
     restored = store.load()
 
-    assert restored.schema_version == 12
+    assert restored.schema_version == 13
     assert restored.video_buffer_seconds == 90
     assert restored.save_event_video_clips is False
     assert restored.reconnect_initial_delay_seconds == 5
@@ -64,5 +64,5 @@ def test_previous_default_speaker_threshold_is_migrated(tmp_path: Path) -> None:
 
     restored = store.load()
 
-    assert restored.schema_version == 12
+    assert restored.schema_version == 13
     assert restored.speaker_match_threshold == 0.32

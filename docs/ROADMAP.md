@@ -1,5 +1,12 @@
 # Hoja de ruta
 
+## 1.0.3 — Vídeo de ventanas locales
+
+- Fuente integrada «Ventana + audio del PC», con selección explícita de una ventana.
+- Vídeo y audio sin silenciar Windows, con transcripción local y clips por hotwords.
+- Grabación completa opcional, segmentos recuperables y proceso nativo aislado.
+- Sin captura automática del escritorio ni cambio de ventana cuando se cierra la seleccionada.
+
 ## 0.1 — Primera versión local funcional
 
 - Captura Streamlink/FFmpeg y audio PCM.

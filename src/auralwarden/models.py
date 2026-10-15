@@ -7,7 +7,7 @@ from typing import Any
 from uuid import uuid4
 
 
-CURRENT_SETTINGS_SCHEMA = 12
+CURRENT_SETTINGS_SCHEMA = 13
 
 
 class SessionState(StrEnum):
@@ -46,6 +46,9 @@ class AppSettings:
     source_kind: str = "url"
     system_audio_device: str = ""
     microphone_device: str = ""
+    window_capture_hwnd: int = 0
+    window_capture_pid: int = 0
+    window_capture_created_at: float = 0.0
     source_title: str = ""
     preview_mode: str = "synced"
     hotwords: list[Hotword] = field(

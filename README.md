@@ -8,7 +8,7 @@
   </p>
 
   <p>
-    <img alt="Versión" src="https://img.shields.io/badge/versi%C3%B3n-1.0.2-00C8D7?style=flat-square">
+    <img alt="Versión" src="https://img.shields.io/badge/versi%C3%B3n-1.0.3-00C8D7?style=flat-square">
     <img alt="Estado" src="https://img.shields.io/badge/estado-validaci%C3%B3n%20local-22C55E?style=flat-square">
     <img alt="Windows" src="https://img.shields.io/badge/Windows-10%20%7C%2011-0078D4?style=flat-square&logo=windows11&logoColor=white">
     <img alt="Python" src="https://img.shields.io/badge/Python-3.12-3776AB?style=flat-square&logo=python&logoColor=white">
@@ -28,7 +28,7 @@
 </div>
 
 > [!IMPORTANT]
-> **AuralWarden 1.0.2 incorpora las correcciones de la auditoría y está en validación local.** Antes de publicar binarios resta completar la correspondencia de fuentes de sus bibliotecas nativas. El portable CPU y los componentes opcionales se validan por separado. Las compilaciones iniciales no están firmadas digitalmente: descárgalas únicamente del perfil oficial de [Yojemr](https://github.com/Yojemr) y comprueba el SHA-256 publicado.
+> **AuralWarden 1.0.3 añade captura de ventanas y conserva las correcciones de la auditoría; está en validación local.** Antes de publicar binarios resta completar la correspondencia de fuentes de sus bibliotecas nativas. El portable CPU y los componentes opcionales se validan por separado. Las compilaciones iniciales no están firmadas digitalmente: descárgalas únicamente del perfil oficial de [Yojemr](https://github.com/Yojemr) y comprueba el SHA-256 publicado.
 
 ![Interfaz principal de AuralWarden](docs/assets/auralwarden-dashboard.png)
 
@@ -76,7 +76,7 @@ La versión pública está diseñada para funcionar sin instalar Python:
 1. Descarga la carpeta publicada en [Releases](https://github.com/Yojemr/AuralWarden/releases) y extráela completa.
 2. Ejecuta `AuralWarden.exe` sin mover por separado las carpetas `runtime` o `docs`.
 3. En **Preparar AuralWarden**, revisa la recomendación y descarga un modelo.
-4. Elige **Enlace**, **Audio del sistema** o **Micrófono**.
+4. Elige **Enlace**, **Audio del sistema**, **Ventana + audio** o **Micrófono**. Para vídeo de Meet, selecciona explícitamente su ventana y activa la grabación completa o los clips antes de iniciar.
 5. Agrega una o más hotwords, ajusta las opciones de clips y pulsa **Iniciar monitoreo**.
 
 El asistente crea la estructura de datos, muestra el tamaño de cada modelo y verifica cada archivo antes de activarlo. Una descarga incompleta o alterada no reemplaza un modelo válido.
@@ -163,6 +163,7 @@ El perfil `public` prepara captura, interfaz, transcripción CPU, diarización y
 | Radio y flujos directos | Streamlink o FFmpeg | HLS, DASH, MP3, AAC, Ogg y otros formatos reconocidos por las herramientas. |
 | Archivo local | FFmpeg | Audio o vídeo elegido por el usuario. |
 | Audio general de Windows | WASAPI loopback | Captura todo lo reproducido por el dispositivo seleccionado. |
+| Ventana local, como Chrome/Meet | Windows Graphics Capture + WASAPI | Solo la ventana elegida; audio completo de la salida seleccionada. No silencia Windows. |
 | Micrófono | WASAPI / PyAudioWPatch | Depende de permisos y del modo de acceso del dispositivo. |
 
 AuralWarden trabaja con transmisiones públicas y enlaces directos. No intenta eludir autenticación, DRM, restricciones geográficas ni condiciones de las plataformas.
@@ -409,9 +410,9 @@ Para conservar todas las carpetas anteriores durante una validación, añade `-P
 
 ## Estado del proyecto
 
-### Versión 1.0.2
+### Versión 1.0.3
 
-- [x] Fuentes web, archivos, audio de Windows y micrófono.
+- [x] Fuentes web, archivos, audio de Windows, micrófono y ventanas locales.
 - [x] Transcripción local, VAD, segunda pasada y hotwords entre fragmentos.
 - [x] Clips de audio/vídeo y grabación completa opcional.
 - [x] Subtítulos auxiliares de YouTube con reintento y renovación.
@@ -420,7 +421,7 @@ Para conservar todas las carpetas anteriores durante una validación, añade `-P
 - [x] Control local limitado para agentes y automatizaciones.
 - [x] Instalador de modelos con integridad y CUDA separado.
 - [x] Constructor portable CPU con CUDA opcional separado.
-- [x] 203 pruebas automatizadas y revisión independiente de las correcciones sensibles.
+- [x] Pruebas automatizadas del núcleo y de la captura de ventanas; revisión independiente previa de las correcciones sensibles de 1.0.2.
 - [x] Pruebas de GitHub Actions, CodeQL, Dependabot y plantillas de colaboración preparados.
 
 ### Validación de la versión pública
@@ -428,7 +429,7 @@ Para conservar todas las carpetas anteriores durante una validación, añade `-P
 - [x] Probar el portable desde una extracción nueva y aislada en Windows.
 - [x] Comprobar descargas reales de modelos y CUDA opcional en el equipo de desarrollo.
 - [x] Conservar las pruebas prolongadas realizadas con versiones candidatas del mismo núcleo.
-- [ ] Completar las fuentes correspondientes de bibliotecas nativas y preparar el ZIP público 1.0.2 aprobado.
+- [ ] Completar las fuentes correspondientes de bibliotecas nativas y preparar el ZIP público aprobado.
 - [ ] Crear el repositorio remoto, revisar el primer commit y habilitar el reporte privado de vulnerabilidades.
 
 No está disponible un segundo computador para una comprobación independiente. Las pruebas prolongadas de versiones anteriores no sustituyen una nueva sesión con voz real después de este parche.
@@ -486,7 +487,7 @@ Ruido, música, solapamiento, fragmentos breves y cambios de micrófono pueden s
 - [Contribuciones](CONTRIBUTING.md)
 - [Componentes y licencias de terceros](docs/THIRD_PARTY_NOTICES.md)
 - [Lista de verificación para publicaciones](docs/RELEASE_CHECKLIST.md)
-- [Notas de AuralWarden 1.0.2](docs/RELEASE_NOTES_1.0.2.md)
+- [Notas de AuralWarden 1.0.3](docs/RELEASE_NOTES_1.0.3.md)
 - [Guía de publicación inicial en GitHub](docs/GITHUB_PUBLISHING.md)
 - [Historial de versiones](CHANGELOG.md)
 

@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QInputDialog,
     QMainWindow,
     QMenu,
     QMessageBox,
@@ -81,6 +82,7 @@ from auralwarden.windows_audio import (
     WindowsAudioError,
     list_windows_audio_devices,
 )
+from auralwarden.window_video import WindowCaptureError, list_capture_windows, validate_target
 
 
 class MainWindow(QMainWindow):
@@ -101,12 +103,16 @@ class MainWindow(QMainWindow):
         )
         first_launch = not self.store.path.exists()
         self._migration_result: MigrationResult | None = None
-        if first_launch and settings_store is None and portable_mode():
+        if first_launch and not demo and settings_store is None and portable_mode():
             self._migration_result = migrate_latest_portable_installation(
                 application_root(), self.store.path.parent
             )
             first_launch = not self.store.path.exists()
-        self.settings = self.store.load()
+        self.settings = AppSettings() if demo else self.store.load()
+        self._selected_window_target = None
+        self.settings.window_capture_hwnd = 0
+        self.settings.window_capture_pid = 0
+        self.settings.window_capture_created_at = 0.0
         self.presets = PresetStore(self.store.path.with_name("presets.json"))
         self.alert_history = AlertHistoryStore(
             self.store.path.with_name("alert-history.json")
@@ -125,6 +131,7 @@ class MainWindow(QMainWindow):
             self.settings.hotwords = []
             self.settings.diarization_enabled = False
         if demo:
+            self.settings.source_kind = "url"
             self.settings.source_url = "demo://interfaz"
             self.settings.hotwords = [
                 Hotword("licitación", threshold=88),
@@ -136,6 +143,11 @@ class MainWindow(QMainWindow):
             self.settings.diarization_enabled = False
             self.settings.save_event_video_clips = False
             self.settings.save_full_video = False
+            self.settings.save_full_audio = False
+            self.settings.save_event_audio_clips = False
+            self.settings.auto_save_transcript = False
+            self.settings.desktop_notifications = False
+            self.settings.sound_notifications = False
             self.settings.use_youtube_captions = False
             self.settings.clip_pre_seconds = 2
             self.settings.clip_post_seconds = 2
@@ -409,6 +421,7 @@ class MainWindow(QMainWindow):
         self.source_kind.setMinimumWidth(150)
         self.source_kind.addItem("Enlace", "url")
         self.source_kind.addItem("Audio del sistema", "system_audio")
+        self.source_kind.addItem("Ventana + audio", "window_capture")
         self.source_kind.addItem("Micrófono", "microphone")
         self.source_kind.setToolTip(
             "Elige entre una transmisión o archivo, todo el audio reproducido por Windows, o un micrófono."
@@ -438,12 +451,20 @@ class MainWindow(QMainWindow):
         self.source_refresh.setToolTip("Actualizar la lista de dispositivos de audio")
         self.source_refresh.clicked.connect(self._refresh_audio_devices)
         self.source_refresh.hide()
+        self.window_pick_button = QPushButton("Elegir ventana")
+        self.window_pick_button.setToolTip(
+            "Captura solo la ventana elegida y todo el sonido de la salida seleccionada. "
+            "Si cambias de pestaña, su contenido también quedará grabado. No silencia el PC."
+        )
+        self.window_pick_button.clicked.connect(self._choose_capture_window)
+        self.window_pick_button.hide()
         source_layout.addWidget(self.source_icon)
         source_layout.addWidget(self.source_kind)
         source_layout.addWidget(self.source_input, 1)
         source_layout.addWidget(self.source_device, 1)
         source_layout.addWidget(self.source_browse)
         source_layout.addWidget(self.source_refresh)
+        source_layout.addWidget(self.window_pick_button)
         header.addWidget(source_frame, 1)
 
         self.start_button = QPushButton("Iniciar monitoreo")
@@ -607,7 +628,7 @@ class MainWindow(QMainWindow):
         self.quick_settings.save_full_audio.setChecked(self.settings.save_full_audio)
         self.quick_settings.save_full_video.setChecked(self.settings.save_full_video)
         self.quick_settings.use_youtube_captions.setChecked(
-            self.settings.use_youtube_captions
+            self.settings.use_youtube_captions and self.settings.source_kind == "url"
         )
         self._update_caption_preview_visibility()
         self.quick_settings.save_event_clips.setChecked(self.settings.save_event_audio_clips)
@@ -659,18 +680,23 @@ class MainWindow(QMainWindow):
         self.settings.source_kind = str(self.source_kind.currentData() or "url")
         self.settings.source_url = self.source_input.text().strip()
         selected_device = str(self.source_device.currentData() or "")
-        if self.settings.source_kind == "system_audio":
+        if self.settings.source_kind in {"system_audio", "window_capture"}:
             self.settings.system_audio_device = selected_device
         elif self.settings.source_kind == "microphone":
             self.settings.microphone_device = selected_device
         self.settings.source_title = self._current_source_title
+        if self.settings.source_kind == "window_capture" and self._selected_window_target is not None:
+            target = self._selected_window_target
+            self.settings.window_capture_hwnd = target.hwnd
+            self.settings.window_capture_pid = target.pid
+            self.settings.window_capture_created_at = target.created_at
         self.settings.hotwords = self.hotword_editor.hotwords()
         self.settings.clip_pre_seconds = self.quick_settings.pre_seconds.value()
         self.settings.clip_post_seconds = self.quick_settings.post_seconds.value()
         self.settings.save_full_audio = self.quick_settings.save_full_audio.isChecked()
         self.settings.save_full_video = (
             self.quick_settings.save_full_video.isChecked()
-            and self.settings.source_kind == "url"
+            and self.settings.source_kind in {"url", "window_capture"}
             and self._source_supports_video()
         )
         self.settings.use_youtube_captions = (
@@ -683,7 +709,7 @@ class MainWindow(QMainWindow):
         )
         self.settings.save_event_video_clips = (
             self.quick_settings.save_event_video_clips.isChecked()
-            and self.settings.source_kind == "url"
+            and self.settings.source_kind in {"url", "window_capture"}
             and self._source_supports_video()
         )
         voice_filter_enabled = any(
@@ -741,21 +767,24 @@ class MainWindow(QMainWindow):
     def _source_kind_changed(self, *_: object) -> None:
         kind = str(self.source_kind.currentData() or "url")
         is_url = kind == "url"
+        is_window = kind == "window_capture"
         self.source_input.setVisible(is_url)
         self.source_browse.setVisible(is_url)
         self.source_device.setVisible(not is_url)
         self.source_refresh.setVisible(not is_url)
+        self.window_pick_button.setVisible(is_window)
         self.silent_button.setVisible(kind == "system_audio")
         self.preview_panel.preview_button.setEnabled(is_url)
         self.preview_panel.open_button.setEnabled(is_url)
-        self.quick_settings.save_event_video_clips.setEnabled(is_url)
-        self.quick_settings.save_full_video.setEnabled(is_url)
+        self.quick_settings.save_event_video_clips.setEnabled(is_url or is_window)
+        self.quick_settings.save_full_video.setEnabled(is_url or is_window)
         self.quick_settings.use_youtube_captions.setEnabled(
             is_url and is_youtube_source(self.source_input.text().strip())
         )
         if not is_url:
-            self.quick_settings.save_event_video_clips.setChecked(False)
-            self.quick_settings.save_full_video.setChecked(False)
+            if not is_window:
+                self.quick_settings.save_event_video_clips.setChecked(False)
+                self.quick_settings.save_full_video.setChecked(False)
             self.quick_settings.use_youtube_captions.setChecked(False)
             self.preview.stop()
             self.preview_panel.set_preview_active(False)
@@ -770,6 +799,8 @@ class MainWindow(QMainWindow):
         kind = str(self.source_kind.currentData() or "url")
         if kind == "url":
             return
+        if kind == "window_capture":
+            kind = "system_audio"
         preferred = (
             self.settings.system_audio_device
             if kind == "system_audio"
@@ -804,12 +835,12 @@ class MainWindow(QMainWindow):
     def _source_device_changed(self, *_: object) -> None:
         kind = str(self.source_kind.currentData() or "url")
         name = str(self.source_device.currentData() or "")
-        if kind == "system_audio":
+        if kind in {"system_audio", "window_capture"}:
             self.source_icon.setPixmap(
                 aw_icon("fa6s.desktop", "#27c69a").pixmap(20, 20)
             )
-            self._current_source_title = "Audio del sistema"
-            self.preview_panel.set_title("Audio del sistema", name.removesuffix(" [Loopback]"))
+            self._current_source_title = "Ventana local" if kind == "window_capture" else "Audio del sistema"
+            self.preview_panel.set_title(self._current_source_title, name.removesuffix(" [Loopback]"))
         elif kind == "microphone":
             self.source_icon.setPixmap(
                 aw_icon("fa6s.microphone", "#18baf2").pixmap(20, 20)
@@ -818,8 +849,31 @@ class MainWindow(QMainWindow):
             self.preview_panel.set_title("Entrada de micrófono", name)
 
     def _source_supports_video(self) -> bool:
+        kind = str(self.source_kind.currentData() or "url")
+        if kind == "window_capture":
+            return True
+        if kind != "url":
+            return False
         suffix = Path(urlparse(self.source_input.text().strip()).path).suffix.casefold()
         return suffix not in {".aac", ".flac", ".m3u", ".m4a", ".mp3", ".ogg", ".opus", ".pls", ".wav"}
+
+    def _choose_capture_window(self) -> None:
+        try:
+            targets = list_capture_windows()
+        except WindowCaptureError as exc:
+            QMessageBox.warning(self, "Captura de ventana", str(exc))
+            return
+        if not targets:
+            QMessageBox.warning(self, "Captura de ventana", "No hay ventanas disponibles para capturar.")
+            return
+        labels = [f"{index + 1}. {Path(target.executable).stem} — {target.title}"
+                  for index, target in enumerate(targets)]
+        choice, accepted = QInputDialog.getItem(self, "Elegir ventana", "Ventana que se grabará:", labels, 0, False)
+        if not accepted:
+            return
+        self._selected_window_target = targets[labels.index(choice)]
+        self.window_pick_button.setText("Ventana elegida")
+        self.preview_panel.set_title("Ventana seleccionada", Path(self._selected_window_target.executable).stem)
 
     def _update_url_capabilities(self) -> None:
         enabled = self._source_supports_video()
@@ -881,10 +935,23 @@ class MainWindow(QMainWindow):
                 self.source_input.setFocus()
                 return False
             raise ValueError(message)
-        if settings.source_kind in {"system_audio", "microphone"}:
+        if settings.source_kind == "window_capture":
+            if self._selected_window_target is None:
+                if interactive:
+                    QMessageBox.warning(self, "Falta la ventana", "Pulsa Elegir ventana antes de iniciar.")
+                    return False
+                raise ValueError("Elige explícitamente la ventana antes de iniciar.")
+            try:
+                validate_target(self._selected_window_target)
+            except WindowCaptureError as exc:
+                if interactive:
+                    QMessageBox.warning(self, "Ventana no disponible", str(exc))
+                    return False
+                raise ValueError(str(exc)) from exc
+        if settings.source_kind in {"system_audio", "microphone", "window_capture"}:
             selected_device = (
                 settings.system_audio_device
-                if settings.source_kind == "system_audio"
+                if settings.source_kind in {"system_audio", "window_capture"}
                 else settings.microphone_device
             )
             if not selected_device:
@@ -928,6 +995,7 @@ class MainWindow(QMainWindow):
         self._stopped_elapsed = None
         source_labels = {
             "system_audio": "Audio del sistema",
+            "window_capture": "Ventana + audio del PC",
             "microphone": "Micrófono",
         }
         self.resources.source_label.setText(
@@ -1146,6 +1214,7 @@ class MainWindow(QMainWindow):
         self.source_device.setEnabled(not running)
         self.source_browse.setEnabled(not running)
         self.source_refresh.setEnabled(not running)
+        self.window_pick_button.setEnabled(not running)
         panel = self.quick_settings
         for field in (panel.save_full_audio, panel.save_full_video, panel.diarization,
                       panel.expected_speakers, panel.use_youtube_captions,
@@ -1160,7 +1229,7 @@ class MainWindow(QMainWindow):
         engine = getattr(self.controller, "engine", None)
         video_ready = bool(getattr(engine, "video_capture_available", False))
         panel.save_event_video_clips.setEnabled(
-            video_ready if running else self.settings.source_kind == "url" and self._source_supports_video()
+            video_ready if running else self.settings.source_kind in {"url", "window_capture"} and self._source_supports_video()
         )
         panel.save_event_video_clips.setToolTip(
             "Pausar o reanudar clips nuevos. Los pendientes terminan y el búfer temporal continúa."
@@ -1169,7 +1238,7 @@ class MainWindow(QMainWindow):
             if running else "Crear un MP4 con vídeo y audio cuando se detecte una hotword"
         )
         if not running:
-            panel.save_full_video.setEnabled(self.settings.source_kind == "url" and self._source_supports_video())
+            panel.save_full_video.setEnabled(self.settings.source_kind in {"url", "window_capture"} and self._source_supports_video())
             panel.use_youtube_captions.setEnabled(
                 self.settings.source_kind == "url" and is_youtube_source(self.source_input.text())
             )
@@ -2157,6 +2226,8 @@ class MainWindow(QMainWindow):
         kind = str(self.source_kind.currentData() or "url")
         if kind == "system_audio":
             return f"system_audio://{self.source_device.currentData() or 'predeterminado'}"
+        if kind == "window_capture":
+            return f"window_capture://{self.settings.window_capture_hwnd or 'sin-seleccionar'}"
         if kind == "microphone":
             return f"microphone://{self.source_device.currentData() or 'predeterminado'}"
         return self.source_input.text().strip()

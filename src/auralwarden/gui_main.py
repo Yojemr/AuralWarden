@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import importlib
 import json
+import multiprocessing
 import sys
 import traceback
 from pathlib import Path
@@ -30,6 +31,8 @@ def _run_self_check(destination: Path | None) -> int:
         "streamlink",
         "yt_dlp",
         "pyaudiowpatch",
+        "windows_capture",
+        "auralwarden.window_video",
         "pycaw.pycaw",
         "comtypes.client",
         "faster_whisper",
@@ -135,16 +138,24 @@ def _run_control_request(request_path: Path, destination: Path | None) -> int:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Interfaz gráfica de AuralWarden")
     parser.add_argument("--demo", action="store_true")
+    parser.add_argument("--record-window", type=int, help="Grabar una ventana por su HWND y el audio del PC")
     parser.add_argument("--screenshot", type=Path)
     parser.add_argument("--screenshot-delay-ms", type=int, default=12_000)
     parser.add_argument("--self-check", action="store_true", help=argparse.SUPPRESS)
+    parser.add_argument("--self-check-window", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--self-check-output", type=Path, help=argparse.SUPPRESS)
     parser.add_argument("--control-request", type=Path, help=argparse.SUPPRESS)
     parser.add_argument("--control-output", type=Path, help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
     try:
+        if args.record_window is not None:
+            from auralwarden.window_recording import main as record_window
+            return int(record_window(["--hwnd", str(args.record_window)]))
         if args.self_check:
             return _run_self_check(args.self_check_output)
+        if args.self_check_window:
+            from auralwarden.window_capture_check import run_window_capture_check
+            return run_window_capture_check(args.self_check_output)
         if args.control_request:
             return _run_control_request(args.control_request, args.control_output)
         from auralwarden.ui import run_app
@@ -160,4 +171,5 @@ def main(argv: list[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
+    multiprocessing.freeze_support()
     raise SystemExit(main())

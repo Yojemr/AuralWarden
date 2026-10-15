@@ -1,4 +1,4 @@
-# Interfaz gráfica de AuralWarden 1.0.2
+# Interfaz gráfica de AuralWarden 1.0.3
 
 ## Inicio
 
@@ -66,6 +66,10 @@ El menú de la bandeja permite abrir la ventana, silenciar alertas, restaurar un
 ## Fuentes locales y monitorización silenciosa
 
 **Audio del sistema** utiliza la captura loopback de Windows y analiza toda la mezcla reproducida por la salida seleccionada. No necesita `Mezcla estéreo`, un controlador virtual ni una cuenta externa. La previsualización y los clips MP4 se deshabilitan, pero siguen disponibles la transcripción, diarización, hotwords, alertas, grabación completa y clips WAV.
+
+**Ventana + audio** añade vídeo de una ventana a la captura loopback. Pulsa **Elegir ventana**, selecciona la ventana de Chrome/Meet u otra aplicación y activa **Guardar vídeo completo** y/o **Clips de vídeo** antes de iniciar. La transcripción y las hotwords usan el mismo audio que el vídeo. Windows permanece audible: este modo no ofrece el botón de silenciar salida. La selección se solicita nuevamente en cada apertura para evitar reutilizar una ventana antigua. Mantén la ventana sin minimizar; puede estar detrás de otras ventanas. Al cambiar de pestaña dentro del navegador, el nuevo contenido también se grabará.
+
+Para grabar sin cargar Whisper, `AuralWarden.exe --record-window <HWND>` abre un control independiente del mismo programa. **Detener y guardar vídeo** finaliza el MP4; cerrar ese control mientras graba primero solicita la finalización. Los segmentos se conservan ante errores para recuperar lo capturado.
 
 **Micrófono** enumera las entradas activas conocidas por Windows. Al iniciar intenta WASAPI y, cuando corresponde, interfaces compatibles de respaldo. La apertura puede ser rechazada por permisos de privacidad, un dispositivo desconectado o el uso exclusivo desde otra aplicación; en ese caso se muestra una explicación y la sesión no continúa.
 

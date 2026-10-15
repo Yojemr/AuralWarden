@@ -10,7 +10,9 @@ La GPLv3 de AuralWarden se aplica a su código original. No cambia las licencias
 | [Streamlink](https://github.com/streamlink/streamlink) | Resolución de fuentes | BSD-2-Clause |
 | [yt-dlp](https://github.com/yt-dlp/yt-dlp) | Metadatos y subtítulos | Unlicense para el código del proyecto; revisar componentes incorporados |
 | [FFmpeg](https://ffmpeg.org/legal.html) | Captura, audio y vídeo | Depende de la compilación. La utilizada localmente tiene `--enable-gpl --enable-version3` |
-| [PyAV](https://github.com/PyAV-Org/PyAV) | Lectura de audio para Whisper | BSD-3-Clause; las bibliotecas FFmpeg incluidas tienen sus propias condiciones |
+| [PyAV](https://github.com/PyAV-Org/PyAV) | Lectura de audio y codificación audiovisual de ventanas | BSD-3-Clause; las bibliotecas FFmpeg incluidas tienen sus propias condiciones |
+| [windows-capture](https://github.com/NiiightmareXD/windows-capture) | Captura nativa de una ventana de Windows | MIT |
+| [OpenCV](https://github.com/opencv/opencv) | Dependencia del adaptador windows-capture | Los avisos de la distribución instalada se conservan junto al portable |
 | [Qt / PySide6](https://doc.qt.io/qtforpython-6/licenses.html) | Interfaz | LGPLv3 / GPLv3 según componente; no se presume una licencia comercial |
 | [QtAwesome](https://github.com/spyder-ide/qtawesome) | Iconos de interfaz | MIT para el código; fuentes e iconos conservan sus avisos |
 | [RapidFuzz](https://github.com/rapidfuzz/RapidFuzz) | Coincidencia aproximada | MIT |

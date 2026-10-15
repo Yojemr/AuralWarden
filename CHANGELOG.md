@@ -9,6 +9,23 @@ El proyecto utiliza versionado semántico: `MAJOR.MINOR.PATCH`.
 - Correcciones posteriores basadas en informes reproducibles de otros equipos.
 - Validación y empaquetado opcional de un componente `whisper.cpp` con Vulkan para hardware AMD e Intel.
 
+## [1.0.3] - 2026-10-14
+
+### Added
+
+- Fuente «Ventana + audio del PC» dentro de la interfaz original: selección explícita de una ventana, captura de audio loopback, transcripción y clips por hotwords con el mismo reloj.
+- Grabación completa opcional de ventanas como Chrome/Google Meet, con vídeo H.264 de hasta 720p y 15 fps y audio AAC, sin silenciar la salida de Windows.
+- Inicio directo de una grabación mediante `AuralWarden.exe --record-window <HWND>`, con control visible para detener y finalizar el MP4.
+- Captura nativa mediante Windows Graphics Capture, limitada a una ventana; no se sustituye por captura del escritorio ni por otra ventana si desaparece la seleccionada.
+
+### Reliability
+
+- La unión de segmentos utiliza su duración registrada, evitando que estimaciones del contenedor acumulen tiempo adicional en grabaciones largas.
+- El componente nativo se ejecuta en un proceso auxiliar sin archivos propios; el audio y el codificador permanecen fuera de ese proceso. Su cierre está acotado para evitar bloqueos nativos en Windows 10.
+- Memoria de imágenes compartida y acotada, cola de audio limitada, codificación de dos hilos y comprobación de identidad de la ventana. La selección se solicita de nuevo al abrir la aplicación.
+- La grabación inmediata dispone de límite de espacio libre y conserva segmentos recuperables si falla la captura o el guardado.
+- El modo demostración fuerza una fuente sintética, no migra preferencias reales, utiliza una carpeta y una instancia separadas y no captura dispositivos físicos ni emite notificaciones.
+
 ## [1.0.2] - 2026-09-30
 
 ### Fixed

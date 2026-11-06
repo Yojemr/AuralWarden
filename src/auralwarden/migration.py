@@ -22,6 +22,7 @@ class MigrationResult:
     skipped_files: int
     presets_imported: bool = False
     alert_history_imported: bool = False
+    bookmarks_imported: bool = False
 
 
 def find_previous_portable_installations(current_root: Path) -> list[Path]:
@@ -64,6 +65,9 @@ def migrate_latest_portable_installation(
     alert_history_imported = _migrate_local_json(
         source_data, destination_data, "alert-history.json", "alerts"
     )
+    bookmarks_imported = _migrate_local_json(
+        source_data, destination_data, "bookmarks.json", "bookmarks"
+    )
     linked = skipped = 0
     for relative in (Path("models"), Path("runtime") / "components"):
         copied, ignored = _link_tree(source_data / relative, destination_data / relative)
@@ -79,6 +83,7 @@ def migrate_latest_portable_installation(
         "speaker_profiles_imported": speaker_profiles_imported,
         "presets_imported": presets_imported,
         "alert_history_imported": alert_history_imported,
+        "bookmarks_imported": bookmarks_imported,
         "linked_files": linked,
         "skipped_files": skipped,
     }
@@ -93,6 +98,7 @@ def migrate_latest_portable_installation(
         skipped,
         presets_imported,
         alert_history_imported,
+        bookmarks_imported,
     )
 
 
@@ -141,6 +147,8 @@ def _migrate_local_json(
     if not source.is_file() or destination.exists():
         return False
     try:
+        if filename == "bookmarks.json" and source.stat().st_size > 8 * 1024 * 1024:
+            return False
         raw = json.loads(source.read_text(encoding="utf-8"))
         if not isinstance(raw, dict) or not isinstance(raw.get(list_key), list):
             return False

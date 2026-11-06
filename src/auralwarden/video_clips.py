@@ -328,6 +328,7 @@ class VideoClipManager:
         for segment in segments:
             normalized = segment.path.resolve().as_posix().replace("'", "'\\''")
             lines.append(f"file '{normalized}'")
+            lines.append(f"duration {segment.end_seconds - segment.start_seconds:.6f}")
         path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
     def _render_clip(

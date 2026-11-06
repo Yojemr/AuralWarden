@@ -13,6 +13,7 @@ from packaging.requirements import Requirement
 RUNTIME_ROOTS = (
     "auralwarden", "streamlink", "yt-dlp", "PyAudioWPatch", "pycaw", "comtypes",
     "faster-whisper", "sherpa-onnx", "sherpa-onnx-bin", "PySide6", "QtAwesome",
+    "windows-capture",
 )
 
 

@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QInputDialog,
     QMainWindow,
     QMenu,
     QMessageBox,
@@ -30,6 +31,8 @@ from PySide6.QtWidgets import (
 
 from auralwarden import __version__
 from auralwarden.alert_history import AlertHistoryStore
+from auralwarden.bookmarks import BookmarkStore
+from auralwarden.ui.moments_dialog import MomentsDialog
 from auralwarden.captions import is_youtube_source
 from auralwarden.filenames import date_time_label
 from auralwarden.local_control import (
@@ -48,6 +51,9 @@ from auralwarden.migration import (
 from auralwarden.models import AppSettings, EngineEvent, EventKind, Hotword, SessionState
 from auralwarden.model_installer import initialize_data_layout
 from auralwarden.model_catalog import discover_local_whisper_models
+from auralwarden.process_audio import ProcessTarget, validate_process_target
+from auralwarden.audio_routing import ApplicationAudioRouter, list_virtual_outputs
+from auralwarden.ui.virtual_audio_dialog import VirtualAudioDialog
 from auralwarden.ui.setup_dialog import ModelSetupDialog
 from auralwarden.paths import application_root, portable_mode, sessions_dir, transcripts_dir
 from auralwarden.presets import PresetStore
@@ -81,6 +87,7 @@ from auralwarden.windows_audio import (
     WindowsAudioError,
     list_windows_audio_devices,
 )
+from auralwarden.window_video import WindowCaptureError, list_capture_windows, validate_target
 
 
 class MainWindow(QMainWindow):
@@ -101,12 +108,16 @@ class MainWindow(QMainWindow):
         )
         first_launch = not self.store.path.exists()
         self._migration_result: MigrationResult | None = None
-        if first_launch and settings_store is None and portable_mode():
+        if first_launch and not demo and settings_store is None and portable_mode():
             self._migration_result = migrate_latest_portable_installation(
                 application_root(), self.store.path.parent
             )
             first_launch = not self.store.path.exists()
-        self.settings = self.store.load()
+        self.settings = AppSettings() if demo else self.store.load()
+        self._selected_window_target = None
+        self.settings.window_capture_hwnd = 0
+        self.settings.window_capture_pid = 0
+        self.settings.window_capture_created_at = 0.0
         self.presets = PresetStore(self.store.path.with_name("presets.json"))
         self.alert_history = AlertHistoryStore(
             self.store.path.with_name("alert-history.json")
@@ -125,6 +136,7 @@ class MainWindow(QMainWindow):
             self.settings.hotwords = []
             self.settings.diarization_enabled = False
         if demo:
+            self.settings.source_kind = "url"
             self.settings.source_url = "demo://interfaz"
             self.settings.hotwords = [
                 Hotword("licitación", threshold=88),
@@ -136,6 +148,11 @@ class MainWindow(QMainWindow):
             self.settings.diarization_enabled = False
             self.settings.save_event_video_clips = False
             self.settings.save_full_video = False
+            self.settings.save_full_audio = False
+            self.settings.save_event_audio_clips = False
+            self.settings.auto_save_transcript = False
+            self.settings.desktop_notifications = False
+            self.settings.sound_notifications = False
             self.settings.use_youtube_captions = False
             self.settings.clip_pre_seconds = 2
             self.settings.clip_post_seconds = 2
@@ -158,6 +175,7 @@ class MainWindow(QMainWindow):
             or fallback_source_info(self.settings.source_url).title
         )
         self._last_match = "Sin coincidencias"
+        self.bookmarks = BookmarkStore(self.store.path.with_name("bookmarks.json"))
         self._clip_count = 0
         self._clip_events: set[str] = set()
         self._speakers: set[str] = set()
@@ -169,6 +187,18 @@ class MainWindow(QMainWindow):
         self.silent_audio = SilentMonitoringManager(
             self.store.path.with_name("silent-audio-state.json")
         )
+        self.application_router = ApplicationAudioRouter(self.store.path.with_name("application-audio-route.json"))
+        self._routing_error = ""
+        self._cable_dialog = None
+        try:
+            from auralwarden.virtual_audio_install import recover_install_defaults
+            recover_install_defaults(self.store.path.parent)
+        except Exception as exc:
+            self._routing_error = str(exc)
+        try:
+            self.application_router.recover_interrupted()
+        except Exception as exc:
+            self._routing_error = str(exc)
         self._silent_recovery_error = ""
         self._silent_recovery_attempts = 0
         try:
@@ -409,6 +439,8 @@ class MainWindow(QMainWindow):
         self.source_kind.setMinimumWidth(150)
         self.source_kind.addItem("Enlace", "url")
         self.source_kind.addItem("Audio del sistema", "system_audio")
+        self.source_kind.addItem("Audio de aplicación", "application_audio")
+        self.source_kind.addItem("Ventana + audio", "window_capture")
         self.source_kind.addItem("Micrófono", "microphone")
         self.source_kind.setToolTip(
             "Elige entre una transmisión o archivo, todo el audio reproducido por Windows, o un micrófono."
@@ -438,12 +470,20 @@ class MainWindow(QMainWindow):
         self.source_refresh.setToolTip("Actualizar la lista de dispositivos de audio")
         self.source_refresh.clicked.connect(self._refresh_audio_devices)
         self.source_refresh.hide()
+        self.window_pick_button = QPushButton("Elegir ventana")
+        self.window_pick_button.setToolTip(
+            "Captura solo la ventana elegida y todo el sonido de la salida seleccionada. "
+            "Si cambias de pestaña, su contenido también quedará grabado. No silencia el PC."
+        )
+        self.window_pick_button.clicked.connect(self._choose_capture_window)
+        self.window_pick_button.hide()
         source_layout.addWidget(self.source_icon)
         source_layout.addWidget(self.source_kind)
         source_layout.addWidget(self.source_input, 1)
         source_layout.addWidget(self.source_device, 1)
         source_layout.addWidget(self.source_browse)
         source_layout.addWidget(self.source_refresh)
+        source_layout.addWidget(self.window_pick_button)
         header.addWidget(source_frame, 1)
 
         self.start_button = QPushButton("Iniciar monitoreo")
@@ -495,6 +535,16 @@ class MainWindow(QMainWindow):
         menu_button.setProperty("flat", True)
         menu_button.setToolTip("Preferencias, modelos e información legal")
         app_menu = QMenu(menu_button)
+        moments_menu = app_menu.addMenu("Momentos")
+        mark_action = moments_menu.addAction("Marcar momento · nota")
+        mark_action.setShortcut("Ctrl+M")
+        mark_action.triggered.connect(self.add_moment)
+        self.manual_clip_action = moments_menu.addAction("Crear clip manual")
+        self.manual_clip_action.setShortcut("Ctrl+Alt+C")
+        self.manual_clip_action.setEnabled(False)
+        self.manual_clip_action.triggered.connect(self.create_manual_clip)
+        moments_menu.addAction("Ver marcadores de esta sesión").triggered.connect(self.open_moments)
+        app_menu.addSeparator()
         preferences_action = app_menu.addAction(
             aw_icon("fa6s.gear", "#b8c8ce"), "Preferencias"
         )
@@ -607,7 +657,7 @@ class MainWindow(QMainWindow):
         self.quick_settings.save_full_audio.setChecked(self.settings.save_full_audio)
         self.quick_settings.save_full_video.setChecked(self.settings.save_full_video)
         self.quick_settings.use_youtube_captions.setChecked(
-            self.settings.use_youtube_captions
+            self.settings.use_youtube_captions and self.settings.source_kind == "url"
         )
         self._update_caption_preview_visibility()
         self.quick_settings.save_event_clips.setChecked(self.settings.save_event_audio_clips)
@@ -659,18 +709,23 @@ class MainWindow(QMainWindow):
         self.settings.source_kind = str(self.source_kind.currentData() or "url")
         self.settings.source_url = self.source_input.text().strip()
         selected_device = str(self.source_device.currentData() or "")
-        if self.settings.source_kind == "system_audio":
+        if self.settings.source_kind in {"system_audio", "window_capture"}:
             self.settings.system_audio_device = selected_device
         elif self.settings.source_kind == "microphone":
             self.settings.microphone_device = selected_device
         self.settings.source_title = self._current_source_title
+        if self.settings.source_kind in {"window_capture", "application_audio"} and self._selected_window_target is not None:
+            target = self._selected_window_target
+            self.settings.window_capture_hwnd = target.hwnd
+            self.settings.window_capture_pid = target.pid
+            self.settings.window_capture_created_at = target.created_at
         self.settings.hotwords = self.hotword_editor.hotwords()
         self.settings.clip_pre_seconds = self.quick_settings.pre_seconds.value()
         self.settings.clip_post_seconds = self.quick_settings.post_seconds.value()
         self.settings.save_full_audio = self.quick_settings.save_full_audio.isChecked()
         self.settings.save_full_video = (
             self.quick_settings.save_full_video.isChecked()
-            and self.settings.source_kind == "url"
+            and self.settings.source_kind in {"url", "window_capture", "application_audio"}
             and self._source_supports_video()
         )
         self.settings.use_youtube_captions = (
@@ -683,7 +738,7 @@ class MainWindow(QMainWindow):
         )
         self.settings.save_event_video_clips = (
             self.quick_settings.save_event_video_clips.isChecked()
-            and self.settings.source_kind == "url"
+            and self.settings.source_kind in {"url", "window_capture", "application_audio"}
             and self._source_supports_video()
         )
         voice_filter_enabled = any(
@@ -741,25 +796,40 @@ class MainWindow(QMainWindow):
     def _source_kind_changed(self, *_: object) -> None:
         kind = str(self.source_kind.currentData() or "url")
         is_url = kind == "url"
+        is_app = kind == "application_audio"
+        is_window = kind in {"window_capture", "application_audio"}
         self.source_input.setVisible(is_url)
         self.source_browse.setVisible(is_url)
-        self.source_device.setVisible(not is_url)
-        self.source_refresh.setVisible(not is_url)
-        self.silent_button.setVisible(kind == "system_audio")
+        self.source_device.setVisible(not is_url and not is_app)
+        self.source_refresh.setVisible(not is_url and not is_app)
+        self.window_pick_button.setVisible(is_window)
+        self.window_pick_button.setText("Elegir aplicación" if is_app else "Elegir ventana")
+        self.window_pick_button.setToolTip(
+            "Captura la aplicación elegida y sus procesos hijos, no solo una pestaña. "
+            "En Chrome puede incluir otras pestañas y ventanas. No silencies la aplicación "
+            "en el mezclador de Windows: también puede silenciar la captura."
+            if is_app else "Grabar esta ventana con el audio completo de la salida seleccionada."
+        )
+        self.silent_button.setVisible(kind in {"system_audio", "application_audio"} or self.application_router.active)
+        self._update_silent_controls()
         self.preview_panel.preview_button.setEnabled(is_url)
         self.preview_panel.open_button.setEnabled(is_url)
-        self.quick_settings.save_event_video_clips.setEnabled(is_url)
-        self.quick_settings.save_full_video.setEnabled(is_url)
+        self.quick_settings.save_event_video_clips.setEnabled(is_url or is_window)
+        self.quick_settings.save_full_video.setEnabled(is_url or is_window)
         self.quick_settings.use_youtube_captions.setEnabled(
             is_url and is_youtube_source(self.source_input.text().strip())
         )
         if not is_url:
-            self.quick_settings.save_event_video_clips.setChecked(False)
-            self.quick_settings.save_full_video.setChecked(False)
+            if not is_window:
+                self.quick_settings.save_event_video_clips.setChecked(False)
+                self.quick_settings.save_full_video.setChecked(False)
             self.quick_settings.use_youtube_captions.setChecked(False)
             self.preview.stop()
             self.preview_panel.set_preview_active(False)
-            self._refresh_audio_devices()
+            if not is_app:
+                self._refresh_audio_devices()
+            else:
+                self._source_device_changed()
         else:
             self.source_icon.setPixmap(aw_icon("fa6s.link", "#aebdc4").pixmap(20, 20))
             self._update_url_capabilities()
@@ -768,8 +838,10 @@ class MainWindow(QMainWindow):
 
     def _refresh_audio_devices(self) -> None:
         kind = str(self.source_kind.currentData() or "url")
-        if kind == "url":
+        if kind in {"url", "application_audio"}:
             return
+        if kind == "window_capture":
+            kind = "system_audio"
         preferred = (
             self.settings.system_audio_device
             if kind == "system_audio"
@@ -804,12 +876,20 @@ class MainWindow(QMainWindow):
     def _source_device_changed(self, *_: object) -> None:
         kind = str(self.source_kind.currentData() or "url")
         name = str(self.source_device.currentData() or "")
-        if kind == "system_audio":
+        if kind == "application_audio":
+            self.source_icon.setPixmap(aw_icon("fa6s.desktop", "#27c69a").pixmap(20, 20))
+            target = self._selected_window_target
+            self._current_source_title = (
+                f"Audio de {Path(target.executable).stem}" if target else "Audio de aplicación"
+            )
+            self.preview_panel.set_title(self._current_source_title, "Solo la aplicación y sus procesos hijos")
+            return
+        if kind in {"system_audio", "window_capture"}:
             self.source_icon.setPixmap(
                 aw_icon("fa6s.desktop", "#27c69a").pixmap(20, 20)
             )
-            self._current_source_title = "Audio del sistema"
-            self.preview_panel.set_title("Audio del sistema", name.removesuffix(" [Loopback]"))
+            self._current_source_title = "Ventana local" if kind == "window_capture" else "Audio del sistema"
+            self.preview_panel.set_title(self._current_source_title, name.removesuffix(" [Loopback]"))
         elif kind == "microphone":
             self.source_icon.setPixmap(
                 aw_icon("fa6s.microphone", "#18baf2").pixmap(20, 20)
@@ -818,8 +898,39 @@ class MainWindow(QMainWindow):
             self.preview_panel.set_title("Entrada de micrófono", name)
 
     def _source_supports_video(self) -> bool:
+        kind = str(self.source_kind.currentData() or "url")
+        if kind in {"window_capture", "application_audio"}:
+            return True
+        if kind != "url":
+            return False
         suffix = Path(urlparse(self.source_input.text().strip()).path).suffix.casefold()
         return suffix not in {".aac", ".flac", ".m3u", ".m4a", ".mp3", ".ogg", ".opus", ".pls", ".wav"}
+
+    def _choose_capture_window(self) -> None:
+        try:
+            targets = list_capture_windows()
+        except WindowCaptureError as exc:
+            QMessageBox.warning(self, "Captura de ventana", str(exc))
+            return
+        if not targets:
+            QMessageBox.warning(self, "Captura de ventana", "No hay ventanas disponibles para capturar.")
+            return
+        labels = [f"{index + 1}. {Path(target.executable).stem} — {target.title}"
+                  for index, target in enumerate(targets)]
+        is_app = self.source_kind.currentData() == "application_audio"
+        choice, accepted = QInputDialog.getItem(
+            self, "Elegir aplicación" if is_app else "Elegir ventana",
+            "Aplicación completa (puede incluir otras pestañas de Chrome):" if is_app else "Ventana que se grabará:",
+            labels, 0, False,
+        )
+        if not accepted:
+            return
+        self._selected_window_target = targets[labels.index(choice)]
+        self.window_pick_button.setText("Aplicación elegida" if is_app else "Ventana elegida")
+        if is_app:
+            self._source_device_changed()
+        else:
+            self.preview_panel.set_title("Ventana seleccionada", Path(self._selected_window_target.executable).stem)
 
     def _update_url_capabilities(self) -> None:
         enabled = self._source_supports_video()
@@ -881,10 +992,28 @@ class MainWindow(QMainWindow):
                 self.source_input.setFocus()
                 return False
             raise ValueError(message)
-        if settings.source_kind in {"system_audio", "microphone"}:
+        if settings.source_kind in {"window_capture", "application_audio"}:
+            if self._selected_window_target is None:
+                if interactive:
+                    QMessageBox.warning(self, "Falta la ventana", "Pulsa Elegir ventana antes de iniciar.")
+                    return False
+                raise ValueError("Elige explícitamente la ventana antes de iniciar.")
+            try:
+                if settings.source_kind == "application_audio":
+                    validate_process_target(ProcessTarget.from_window(self._selected_window_target))
+                    if settings.save_full_video or settings.save_event_video_clips:
+                        validate_target(self._selected_window_target)
+                else:
+                    validate_target(self._selected_window_target)
+            except (WindowCaptureError, WindowsAudioError) as exc:
+                if interactive:
+                    QMessageBox.warning(self, "Ventana no disponible", str(exc))
+                    return False
+                raise ValueError(str(exc)) from exc
+        if settings.source_kind in {"system_audio", "microphone", "window_capture"}:
             selected_device = (
                 settings.system_audio_device
-                if settings.source_kind == "system_audio"
+                if settings.source_kind in {"system_audio", "window_capture"}
                 else settings.microphone_device
             )
             if not selected_device:
@@ -928,6 +1057,8 @@ class MainWindow(QMainWindow):
         self._stopped_elapsed = None
         source_labels = {
             "system_audio": "Audio del sistema",
+            "application_audio": "Audio de aplicación",
+            "window_capture": "Ventana + audio del PC",
             "microphone": "Micrófono",
         }
         self.resources.source_label.setText(
@@ -1020,6 +1151,8 @@ class MainWindow(QMainWindow):
                 self.resources.update_audio_level(self._last_audio_level)
                 return
             code = str(event.payload.get("code") or "")
+            if code == "manual_clip_requested":
+                self.activity.add_detection(event.payload)
             if code == "capture_backlog":
                 queued = float(event.payload.get("queued_seconds") or 0.0)
                 dropped = float(event.payload.get("dropped_seconds") or 0.0)
@@ -1068,6 +1201,8 @@ class MainWindow(QMainWindow):
                 "full_video_failed",
                 "video_recovery_available",
                 "video_cleanup_deferred",
+                "manual_clip_requested",
+                "manual_clip_cancelled",
             }:
                 message = str(event.payload.get("message") or "")
                 self._status_detail = message
@@ -1102,6 +1237,7 @@ class MainWindow(QMainWindow):
 
     def _set_state(self, state: SessionState) -> None:
         self._current_state = state
+        self.manual_clip_action.setEnabled(state == SessionState.RUNNING)
         labels = {
             SessionState.IDLE: "En espera",
             SessionState.STARTING: "Preparando monitor",
@@ -1146,6 +1282,7 @@ class MainWindow(QMainWindow):
         self.source_device.setEnabled(not running)
         self.source_browse.setEnabled(not running)
         self.source_refresh.setEnabled(not running)
+        self.window_pick_button.setEnabled(not running)
         panel = self.quick_settings
         for field in (panel.save_full_audio, panel.save_full_video, panel.diarization,
                       panel.expected_speakers, panel.use_youtube_captions,
@@ -1160,7 +1297,7 @@ class MainWindow(QMainWindow):
         engine = getattr(self.controller, "engine", None)
         video_ready = bool(getattr(engine, "video_capture_available", False))
         panel.save_event_video_clips.setEnabled(
-            video_ready if running else self.settings.source_kind == "url" and self._source_supports_video()
+            video_ready if running else self.settings.source_kind in {"url", "window_capture", "application_audio"} and self._source_supports_video()
         )
         panel.save_event_video_clips.setToolTip(
             "Pausar o reanudar clips nuevos. Los pendientes terminan y el búfer temporal continúa."
@@ -1169,15 +1306,11 @@ class MainWindow(QMainWindow):
             if running else "Crear un MP4 con vídeo y audio cuando se detecte una hotword"
         )
         if not running:
-            panel.save_full_video.setEnabled(self.settings.source_kind == "url" and self._source_supports_video())
+            panel.save_full_video.setEnabled(self.settings.source_kind in {"url", "window_capture", "application_audio"} and self._source_supports_video())
             panel.use_youtube_captions.setEnabled(
                 self.settings.source_kind == "url" and is_youtube_source(self.source_input.text())
             )
-        self.silent_button.setEnabled(
-            running
-            and self.settings.source_kind == "system_audio"
-            and state in {SessionState.STARTING, SessionState.RUNNING}
-        )
+        self._update_silent_controls()
         if state in {SessionState.STOPPED, SessionState.FAILED}:
             self._restore_silent_audio("La salida de audio fue restaurada.")
             self._last_audio_level = 0.0
@@ -1272,8 +1405,11 @@ class MainWindow(QMainWindow):
             self.source_info.request(source)
 
     def _toggle_silent_monitoring(self) -> None:
-        if self.silent_audio.active:
+        if self.silent_audio.active or self.application_router.active:
             self._restore_silent_audio("La salida de audio fue restaurada manualmente.")
+            return
+        if self.source_kind.currentData() == "application_audio":
+            self._toggle_application_routing()
             return
         if not self.controller.running or self.settings.source_kind != "system_audio":
             return
@@ -1317,6 +1453,18 @@ class MainWindow(QMainWindow):
         self._update_silent_controls()
 
     def _restore_silent_audio(self, detail: str = "") -> None:
+        if self.application_router.active:
+            try:
+                self.application_router.restore_original()
+                self._routing_error = ""
+                if detail:
+                    self._status_detail = detail
+                    self.status_label.setToolTip(detail)
+            except Exception as exc:
+                self._routing_error = str(exc)
+                self._status_detail = f"Restauración de audio pendiente: {exc}"
+                self.status_label.setToolTip(self._status_detail)
+            self._update_silent_controls()
         if not self.silent_audio.active:
             return
         try:
@@ -1334,6 +1482,9 @@ class MainWindow(QMainWindow):
         self._update_silent_controls()
 
     def _reveal_audio_for_alert(self, phrase: str) -> None:
+        if self.application_router.active:
+            self._restore_silent_audio(f"La hotword '{phrase}' restauró el audio de la aplicación. Permanecerá audible.")
+            return
         if not self.silent_audio.active:
             return
         try:
@@ -1358,6 +1509,12 @@ class MainWindow(QMainWindow):
             )
 
     def _check_silent_audio_state(self) -> None:
+        route_error = self.application_router.status_message
+        if route_error and self.application_router.active:
+            self._routing_error = route_error
+            self._status_detail = f"Restauración de audio pendiente: {route_error}"
+            self.status_label.setToolTip(self._status_detail)
+        self._update_silent_controls()
         if self._silent_recovery_error and self._silent_recovery_attempts < 5:
             self._silent_recovery_attempts += 1
             try:
@@ -1384,8 +1541,20 @@ class MainWindow(QMainWindow):
             self._update_silent_controls()
 
     def _update_silent_controls(self) -> None:
-        active = self.silent_audio.active
-        self.silent_button.setText("Restaurar audio" if active else "Silenciar salida")
+        active = self.silent_audio.active or self.application_router.active
+        is_app = self.source_kind.currentData() == "application_audio"
+        self.silent_button.setEnabled(active or is_app and self._current_state != SessionState.STOPPING
+            or self.source_kind.currentData() == "system_audio"
+            and self._current_state in {SessionState.STARTING, SessionState.RUNNING})
+        pending = self.application_router.active and self.application_router.state.get("phase") in {"waiting", "pending"}
+        self.silent_button.setText("Restauración pendiente" if pending else "Restaurar audio" if active else "Separar audio" if is_app else "Silenciar salida")
+        self.silent_button.setVisible(is_app or self.source_kind.currentData() == "system_audio" or active)
+        if is_app:
+            self.silent_button.setToolTip("Enviar la aplicación completa a VB-CABLE sin silenciar las demás. Una hotword restaurará su salida. Si no está instalado, permite preparar el cable.")
+        else:
+            self.silent_button.setToolTip("Silenciar toda la salida del sistema elegida. Una hotword la restaurará y la dejará audible.")
+        if pending:
+            self.silent_button.setToolTip(self.application_router.status_message + " Pulsa para reintentar la restauración.")
         self.silent_button.setIcon(
             aw_icon("fa6s.volume-high" if active else "fa6s.volume-xmark", "#d8e0e4")
         )
@@ -1393,6 +1562,41 @@ class MainWindow(QMainWindow):
             self.tray_restore_audio.setVisible(active)
             self.tray_restore_audio.setEnabled(active)
         self._write_runtime_status()
+
+    def _toggle_application_routing(self) -> None:
+        if not self.controller.running:
+            self._cable_dialog = VirtualAudioDialog(self.store.path.parent, self)
+            self._cable_dialog.exec()
+            return
+        if self._selected_window_target is None:
+            return
+        try:
+            outputs = list_virtual_outputs()
+            if not outputs:
+                QMessageBox.warning(self, "Falta el cable virtual", "Detén el monitoreo y pulsa Separar audio para instalar únicamente VB-CABLE estándar.")
+                return
+            if len(outputs) != 1:
+                raise WindowsAudioError("Hay varios cables estándar. Resuelve la selección del dispositivo antes de separar el audio.")
+            if self._last_audio_level <= 0.0001:
+                QMessageBox.warning(self, "Comprueba el audio", "Reproduce audio en la aplicación y confirma que se mueva el medidor antes de separarlo.")
+                return
+            if QMessageBox.question(self, "Separar audio de la aplicación",
+                "Se enviará la aplicación completa y sus preferencias de salida a VB-CABLE. "
+                "En Chrome puede afectar a otras pestañas y ventanas. Las demás aplicaciones seguirán usando sus salidas.\n\n"
+                "Una hotword devolverá el audio a su salida anterior y lo dejará allí. "
+                "También se restaurará al detener o cerrar AuralWarden. Si la aplicación vigilada se cierra primero, "
+                "la recuperación puede necesitar que vuelvas a abrirla y reproduzcas audio.\n\n"
+                "El cable queda instalado: no desaparece automáticamente al cerrar AuralWarden. ¿Continuar?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No) != QMessageBox.StandardButton.Yes:
+                return
+            target = ProcessTarget.from_window(self._selected_window_target)
+            self.application_router.activate(target, outputs[0])
+            self._status_detail = "Audio separado en VB-CABLE. Una hotword restaurará la salida de la aplicación."
+            self.status_label.setToolTip(self._status_detail)
+        except Exception as exc:
+            QMessageBox.warning(self, "No se pudo separar el audio", str(exc))
+        self._update_silent_controls()
 
     def _notify(self, phrase: str, score: float, speaker: str = "") -> None:
         if self._muted:
@@ -1615,7 +1819,42 @@ class MainWindow(QMainWindow):
                 roots.extend(
                     [previous / "data" / "sessions", previous / "data" / "transcripts"]
                 )
-        TranscriptLibraryDialog(roots, self).exec()
+        TranscriptLibraryDialog(roots, self, bookmark_store=self.bookmarks).exec()
+
+    def add_moment(self) -> None:
+        engine = getattr(self.controller, "engine", None)
+        scope = self.controller.session_path
+        elapsed = getattr(engine, "captured_until_seconds", 0.0)
+        if scope is None or elapsed <= 0:
+            QMessageBox.information(self, "Todavía no hay una sesión", "Inicia el monitoreo y espera a recibir audio. También puedes añadir marcadores al abrir una transcripción anterior.")
+            return
+        note, accepted = QInputDialog.getMultiLineText(self, "Marcar momento", "Nota (hasta 1.000 caracteres):")
+        if not accepted:
+            return
+        try:
+            self.bookmarks.add(scope, elapsed, note)
+            self.status_label.setToolTip("Marcador guardado. Puedes revisarlo desde Momentos o Transcripciones.")
+        except (OSError, ValueError) as exc:
+            QMessageBox.warning(self, "No se pudo guardar el marcador", str(exc))
+
+    def open_moments(self) -> None:
+        scope = self.controller.session_path
+        if scope is None:
+            QMessageBox.information(self, "Sin sesión", "Abre una transcripción anterior para consultar sus marcadores.")
+            return
+        engine = getattr(self.controller, "engine", None)
+        MomentsDialog(self.bookmarks, scope, self,
+            elapsed_seconds=getattr(engine, "captured_until_seconds", 0.0)).exec()
+
+    def create_manual_clip(self) -> None:
+        engine = getattr(self.controller, "engine", None)
+        try:
+            if engine is None:
+                raise ValueError("Inicia el monitoreo antes de crear un clip.")
+            engine.request_manual_clip()
+            self.status_label.setToolTip("Clip manual solicitado. Espera el intervalo posterior configurado; aparecerá en la carpeta de clips.")
+        except (OSError, ValueError) as exc:
+            QMessageBox.warning(self, "No se pudo crear el clip", str(exc))
 
     @staticmethod
     def _open_evidence(path: str) -> None:
@@ -1730,6 +1969,8 @@ class MainWindow(QMainWindow):
         self.tray_last = self.tray_menu.addAction(self._last_match)
         self.tray_last.setEnabled(False)
         self.tray_menu.addSeparator()
+        self.tray_manual_clip = self.tray_menu.addAction("Crear clip manual")
+        self.tray_manual_clip.triggered.connect(self.create_manual_clip)
         open_action = self.tray_menu.addAction(aw_icon("fa6s.window-restore"), "Abrir AuralWarden")
         open_action.triggered.connect(self._restore_window)
         self.tray_mute = self.tray_menu.addAction(aw_icon("fa6s.volume-high"), "Silenciar alertas")
@@ -1756,6 +1997,7 @@ class MainWindow(QMainWindow):
         self.tray_status.setText(self.status_label.text())
         self.tray_last.setText(self._last_match)
         self.tray_stop.setEnabled(self.controller.running)
+        self.tray_manual_clip.setEnabled(self._current_state == SessionState.RUNNING)
 
     def _tray_activated(self, reason: QSystemTrayIcon.ActivationReason) -> None:
         if reason in {
@@ -2157,6 +2399,10 @@ class MainWindow(QMainWindow):
         kind = str(self.source_kind.currentData() or "url")
         if kind == "system_audio":
             return f"system_audio://{self.source_device.currentData() or 'predeterminado'}"
+        if kind == "application_audio":
+            return f"application_audio://{self.settings.window_capture_pid or 'sin-seleccionar'}"
+        if kind == "window_capture":
+            return f"window_capture://{self.settings.window_capture_hwnd or 'sin-seleccionar'}"
         if kind == "microphone":
             return f"microphone://{self.source_device.currentData() or 'predeterminado'}"
         return self.source_input.text().strip()

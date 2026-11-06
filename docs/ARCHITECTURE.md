@@ -39,6 +39,12 @@ Micrófono ------------> WASAPI / respaldo -----+
 - `capture`: resolución Streamlink, respaldo directo FFmpeg, espera progresiva, reconexión y bloques PCM.
 - `captions`: resolución pública de pistas YouTube, lectura incremental de JSON3 o WebVTT segmentado sobre M3U8 y entradas auxiliares.
 - `windows_audio`: enumeración y captura local, remuestreo, medidor, silencio reversible y recuperación del volumen.
+- `process_audio`: identidad explícita de aplicación, captura por árbol de procesos en un auxiliar aislado, cola de 16 bloques y conversión continua a PCM mono de 16 kHz con PyAV. No cambia volúmenes ni sustituye la fuente ante fallos.
+- `_process_audio_native`: activación asíncrona WASAPI y lectura de búferes dentro del auxiliar; COM no se inicializa en el hilo de la interfaz para esta captura.
+- `audio_routing` / `_audio_policy_native`: enrutamiento optativo de una aplicación a VB-CABLE, preferencias por rol mediante la interfaz interna de Windows, comprobación de sesiones activas y diario atómico de restauración. No cambia dispositivos predeterminados globales ni instala el componente por sí solo.
+- `audio_route_guard`: auxiliar independiente con exclusión por ejecutable, comprobación del propietario y restauración comparada. Si falta una sesión válida de la aplicación original, conserva el registro y espera hasta 24 horas; el siguiente inicio puede reanudar la recuperación.
+- `virtual_audio_install` / `ui.virtual_audio_dialog`: paquete opcional fijado por hash, instalador oficial de 64 bits con consentimiento administrativo y conservación de dispositivos predeterminados. El controlador no forma parte del portable.
+- `window_video`: selección de ventana, captura gráfica aislada y vídeo segmentado; admite audio general o audio del proceso seleccionado según la fuente elegida.
 - `audio`: formato PCM, búfer circular y escritura WAV.
 - `hardware`: inventario local y plan automático de motor, dispositivo, precisión, modelo e hilos.
 - `transcribers`: contrato común, simulador y adaptadores `faster-whisper` y `whisper.cpp`.

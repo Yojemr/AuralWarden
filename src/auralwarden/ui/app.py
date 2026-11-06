@@ -9,13 +9,14 @@ import sys
 import time
 from pathlib import Path
 from typing import Any
+from uuid import uuid4
 
 from PySide6.QtCore import QTimer, Qt
 from PySide6.QtGui import QFont, QFontDatabase, QIcon
 from PySide6.QtNetwork import QLocalServer, QLocalSocket
 from PySide6.QtWidgets import QApplication
 
-from auralwarden.paths import application_root
+from auralwarden.paths import application_root, data_dir
 from auralwarden.local_control import TRANSPORT_PROTOCOL_VERSION, transport_proof
 from auralwarden.ui.assets import asset_path
 from auralwarden.ui.main_window import MainWindow
@@ -313,6 +314,8 @@ def run_app(
     screenshot: Path | None = None,
     screenshot_delay_ms: int = 12_000,
 ) -> int:
+    if demo:
+        os.environ["AURALWARDEN_DATA_DIR"] = str(data_dir() / "demo" / uuid4().hex)
     QApplication.setHighDpiScaleFactorRoundingPolicy(
         Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
     )
@@ -323,7 +326,10 @@ def run_app(
     app.setFont(QFont(font_family, 10))
     app.setStyle("Fusion")
     app.setStyleSheet(APP_STYLESHEET)
-    instance_guard = SingleInstanceGuard(single_instance_name())
+    instance_name = single_instance_name()
+    if demo:
+        instance_name += ".demo." + uuid4().hex
+    instance_guard = SingleInstanceGuard(instance_name)
     if not instance_guard.claim():
         return 0
     window = MainWindow(demo=demo)

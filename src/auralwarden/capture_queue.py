@@ -26,12 +26,18 @@ class CaptureQueue:
         self._error: Exception | None = None
         self.dropped_seconds = 0.0
         self.origin_monotonic: float | None = None
+        self._captured_until_seconds = 0.0
         self.thread = Thread(target=self._read, name="AuralWardenCapture", daemon=True)
 
     @property
     def queued_seconds(self) -> float:
         with self._condition:
             return self.format.seconds_for_bytes(self._bytes)
+
+    @property
+    def captured_until_seconds(self) -> float:
+        with self._condition:
+            return self._captured_until_seconds
 
     def _read(self) -> None:
         try:
@@ -41,6 +47,7 @@ class CaptureQueue:
                 if self.on_capture is not None:
                     self.on_capture(chunk.data)
                 with self._condition:
+                    self._captured_until_seconds = chunk.end_seconds
                     if len(chunk.data) > self.capacity:
                         removed = len(chunk.data) - self.capacity
                         duration = self.format.seconds_for_bytes(removed)

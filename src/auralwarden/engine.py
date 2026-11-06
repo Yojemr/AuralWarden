@@ -21,6 +21,7 @@ from auralwarden.events import EventBus
 from auralwarden.hotwords import HotwordDetector, normalize_text
 from auralwarden.models import (
     AppSettings,
+    DetectionEvent,
     EngineEvent,
     EventKind,
     Hotword,
@@ -82,6 +83,10 @@ class EngineOptions:
             source_label = f"system_audio://{settings.system_audio_device or 'predeterminado'}"
         elif settings.source_kind == "microphone":
             source_label = f"microphone://{settings.microphone_device or 'predeterminado'}"
+        elif settings.source_kind == "window_capture":
+            source_label = f"window_capture://{settings.window_capture_hwnd}"
+        elif settings.source_kind == "application_audio":
+            source_label = f"application_audio://{settings.window_capture_pid}"
         else:
             source_label = settings.source_url
         return cls(
@@ -170,6 +175,60 @@ class MonitoringEngine:
             self.options.save_event_video_clips or self.options.save_full_video
         )
         self._requested_clips: tuple[bool, bool] | None = None
+        self._reader: CaptureQueue | None = None
+        self._manual_clips: list[tuple[DetectionEvent, bool, bool]] = []
+        self._manual_outstanding: dict[str, set[str]] = {}
+
+    @property
+    def captured_until_seconds(self) -> float:
+        reader = self._reader
+        return reader.captured_until_seconds if reader is not None else 0.0
+
+    def request_manual_clip(self) -> str:
+        with self._lock:
+            if self.state != SessionState.RUNNING or self._stop_event.is_set():
+                raise ValueError("Inicia el monitoreo y espera a recibir audio antes de crear un clip.")
+            elapsed = self.captured_until_seconds
+            audio, video = self._requested_clips or (self.options.save_event_audio_clips, self.options.save_event_video_clips)
+            if elapsed <= 0 or not (audio or video):
+                raise ValueError("Comprueba que llegue audio y activa al menos un tipo de clip.")
+            if video and not self.video_capture_available:
+                raise ValueError("La sesión empezó sin captura de vídeo. Actívala antes de iniciar otra sesión.")
+            if len(self._manual_outstanding) >= 8:
+                raise ValueError("Hay ocho clips manuales pendientes. Espera a que terminen.")
+            event = DetectionEvent("Clip manual", 100, elapsed, "Momento guardado manualmente", "")
+            self._manual_outstanding[event.event_id] = ({"audio/wav"} if audio else set()) | ({"video/mp4"} if video else set())
+            self._manual_clips.append((event, audio, video))
+            return event.event_id
+
+    def _drain_manual_clips(self, captured_until, audio_manager, video_manager):
+        with self._lock:
+            ready = [item for item in self._manual_clips if item[0].elapsed_seconds <= captured_until]
+            self._manual_clips = [item for item in self._manual_clips if item[0].elapsed_seconds > captured_until]
+        for event, audio, video in ready:
+            info = EngineEvent(EventKind.INFO, {"code": "manual_clip_requested", "event_id": event.event_id,
+                "elapsed_seconds": event.elapsed_seconds, "phrase": "Clip manual", "manual": True,
+                "audio_clip_requested": audio, "video_clip_requested": video,
+                "message": "Clip manual solicitado; se guardará al completar el intervalo posterior."})
+            if self.session is not None:
+                self.session.append_engine_event(info)
+            self.events.publish(info)
+            if audio:
+                for completed in audio_manager.schedule(event, captured_until):
+                    self._publish_clip(completed)
+            if video:
+                if video_manager is None:
+                    self._finish_manual_media(event.event_id, "video/mp4")
+                else:
+                    self._publish_video_outcomes(video_manager.schedule(event, captured_until))
+
+    def _finish_manual_media(self, event_id, media_type):
+        with self._lock:
+            remaining = self._manual_outstanding.get(event_id)
+            if remaining is not None:
+                remaining.discard(media_type)
+                if not remaining:
+                    self._manual_outstanding.pop(event_id, None)
 
     def update_clip_preferences(self, audio: bool, video: bool) -> None:
         if video and not self.video_capture_available:
@@ -299,6 +358,7 @@ class MonitoringEngine:
             self._start_caption_monitor()
             reader = CaptureQueue(self.source, self._stop_event, self.format,
                                   on_capture=recorder.write if recorder is not None else None)
+            self._reader = reader
             last_dropped = 0.0
             for chunk in reader.chunks():
                 self._capture_started_monotonic = reader.origin_monotonic
@@ -319,6 +379,7 @@ class MonitoringEngine:
                     last_dropped = reader.dropped_seconds
                 last_captured = chunk.end_seconds
                 self.ring.append(chunk.data)
+                self._drain_manual_clips(last_captured, clip_manager, video_clip_manager)
                 for completed in clip_manager.push(chunk):
                     self._publish_clip(completed)
                 if video_clip_manager is not None:
@@ -353,6 +414,7 @@ class MonitoringEngine:
             self._caption_stop_event.set()
             self._join_caption_monitor()
             self._drain_caption_cues(last_captured, clip_manager, video_clip_manager)
+            self._drain_manual_clips(last_captured, clip_manager, video_clip_manager)
             for completed in clip_manager.flush():
                 self._publish_clip(completed)
             if video_clip_manager is not None:
@@ -417,6 +479,14 @@ class MonitoringEngine:
             self._set_state(SessionState.FAILED)
         finally:
             self._stop_event.set()
+            with self._lock:
+                cancelled = len(self._manual_clips)
+                for event, _, _ in self._manual_clips:
+                    self._manual_outstanding.pop(event.event_id, None)
+                self._manual_clips.clear()
+            if cancelled:
+                self.events.publish(EngineEvent(EventKind.INFO, {"code": "manual_clip_cancelled",
+                    "message": "La sesión terminó antes de procesar el audio de algunos clips manuales.", "count": cancelled}))
             self._caption_stop_event.set()
             self._join_caption_monitor()
             try:
@@ -1094,6 +1164,7 @@ class MonitoringEngine:
         media_type = (
             "video/mp4" if isinstance(completed, CompletedVideoClip) else "audio/wav"
         )
+        self._finish_manual_media(completed.event_id, media_type)
         self.events.publish(
             EngineEvent(
                 EventKind.CLIP,
@@ -1112,6 +1183,7 @@ class MonitoringEngine:
                 self._publish_clip(outcome)
                 continue
             assert isinstance(outcome, FailedVideoClip)
+            self._finish_manual_media(outcome.event_id, "video/mp4")
             self.events.publish(
                 EngineEvent(
                     EventKind.INFO,

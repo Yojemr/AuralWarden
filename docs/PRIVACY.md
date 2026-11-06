@@ -12,11 +12,21 @@ Los enlaces públicos de Twitch y Kick se resuelven mediante Streamlink sin inte
 
 El modo **Audio del sistema** recibe la mezcla completa del dispositivo seleccionado. Puede incluir sonidos de otras aplicaciones además de la fuente que motivó la sesión. La interfaz lo identifica expresamente y la captura solo comienza al pulsar **Iniciar monitoreo**.
 
+El modo **Audio de aplicación** solicita una selección manual en cada apertura y captura únicamente ese proceso y sus descendientes mediante la API nativa de Windows. En Chrome puede incluir otras ventanas y pestañas del mismo navegador; no equivale a seleccionar una sola pestaña de Meet. Se comprueban identificador, fecha de creación y ejecutable del proceso para evitar reutilizar una identidad antigua. Si la API falla o desaparece la aplicación, no se pasa al micrófono ni al audio general. No modifica volúmenes, instala controladores, inyecta código ni transmite audio. El auxiliar usa una cola de audio acotada en RAM y no escribe archivos propios; la conservación sigue las opciones de la sesión.
+
+El modo **Ventana + audio del PC** graba únicamente la ventana seleccionada, además de la mezcla completa de la salida de audio. Si el usuario cambia de pestaña en esa ventana, el nuevo contenido queda dentro de la grabación. No captura automáticamente todo el escritorio, no selecciona ventanas al iniciar y no sustituye una ventana desaparecida por otra. La captura de imágenes se realiza en un proceso auxiliar local; no se transmite a servicios externos. La grabación completa y los clips continúan siendo opciones independientes.
+
+**Separar audio** es opcional y requiere una confirmación adicional. Modifica temporalmente las preferencias de salida de la aplicación elegida, no el volumen de las demás ni las salidas predeterminadas de Windows. El auxiliar consulta únicamente identidades y sesiones de audio necesarias para esa aplicación; no lee contenido del navegador, historial, cuentas ni títulos de pestañas. El diario privado `application-audio-route.json` conserva PID, creación, ruta del ejecutable, identificador del cable y preferencias originales hasta restaurarlas; entonces se reduce a un estado sin esos identificadores. No contiene audio ni transcripciones y no se publica.
+
+La descarga opcional de VB-CABLE contacta al sitio oficial de VB-Audio y verifica un paquete concreto. El instalador requiere autorización administrativa y el controlador permanece instalado. `virtual-audio-install-state.json` conserva temporalmente los identificadores de dispositivos predeterminados previos para recuperar cambios causados por la instalación. No se cambian mecanismos de firma ni seguridad de arranque.
+
 La monitorización silenciosa modifica temporalmente el silencio del dispositivo completo. Requiere confirmación, guarda únicamente identificador, nombre, volumen y estado anteriores en `silent-audio-state.json`, y elimina ese archivo al restaurar. No contiene audio ni texto. Una hotword activa la salida y la deja encendida; al detener sin alerta se recupera el estado original.
 
 El modo **Micrófono** puede captar conversaciones cercanas. Debe usarse únicamente con las autorizaciones y avisos aplicables. La grabación completa continúa desactivada por defecto y los clips conservan solo los intervalos configurados.
 
 ## Transcripción
+
+Los marcadores son voluntarios y se guardan en `data/bookmarks.json` con hora, nota, fecha y ruta local de la sesión o archivo. No se escriben anotaciones dentro de los originales ni se envían a servicios externos. Los clips manuales son solicitudes explícitas del usuario y conservan únicamente el intervalo configurado, como los clips automáticos; no se presentan como detecciones de voz.
 
 La transcripción visible permanece en memoria durante la sesión, pero AuralWarden mantiene además un diario incremental local dentro de `data/sessions` para poder recuperarla después de un cierre inesperado. El archivo TXT o JSON de consulta permanente solo se exporta cuando se activa o confirma el guardado. Las coincidencias sí se registran por defecto con hora, contexto y confianza para conservar la finalidad principal de las alertas.
 

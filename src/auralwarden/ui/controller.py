@@ -37,6 +37,8 @@ from auralwarden.transcribers import (
 )
 from auralwarden.transcript import TranscriptBuffer
 from auralwarden.windows_audio import WasapiPcmCapture
+from auralwarden.process_audio import ProcessPcmCapture, ProcessTarget, validate_process_target
+from auralwarden.window_video import WindowPcmCapture, validate_target, window_target
 
 
 class EventRelay(QObject):
@@ -99,13 +101,37 @@ def resolve_diarization_models(settings: AppSettings) -> tuple[Path, Path]:
     )
 
 
+def build_windows_source(settings: AppSettings):
+    video = settings.save_event_video_clips or settings.save_full_video
+    if settings.source_kind not in {"window_capture", "application_audio"} and video:
+        raise ValueError("El micrófono y el audio del sistema no admiten grabación de vídeo.")
+    if settings.source_kind in {"window_capture", "application_audio"}:
+        target = window_target(settings.window_capture_hwnd)
+        if (target.pid != settings.window_capture_pid
+                or target.created_at != settings.window_capture_created_at):
+            raise ValueError("La ventana original cambió. Selecciónala nuevamente antes de grabar.")
+        if settings.source_kind == "application_audio":
+            process_target = ProcessTarget.from_window(target)
+            validate_process_target(process_target)
+            audio = ProcessPcmCapture(process_target)
+            if video:
+                validate_target(target)
+                return WindowPcmCapture(target, audio_source=audio)
+            return audio
+        validate_target(target)
+        return WindowPcmCapture(target, settings.system_audio_device)
+    selected_device = (settings.system_audio_device if settings.source_kind == "system_audio"
+                       else settings.microphone_device)
+    return WasapiPcmCapture(settings.source_kind, selected_device)
+
+
 def build_engine(
     settings: AppSettings,
     bus: EventBus,
     *,
     realtime_demo: bool = True,
 ) -> MonitoringEngine:
-    if settings.source_url.startswith("demo://"):
+    if settings.source_kind == "url" and settings.source_url.startswith("demo://"):
         return MonitoringEngine(
             MemoryPcmCapture(
                 duration_seconds=90,
@@ -184,17 +210,8 @@ def build_engine(
                 num_threads=effective.diarization_threads,
             )
         )
-    if settings.source_kind in {"system_audio", "microphone"}:
-        if settings.save_event_video_clips or settings.save_full_video:
-            raise ValueError(
-                "El micrófono y el audio del sistema no admiten grabación de vídeo."
-            )
-        selected_device = (
-            settings.system_audio_device
-            if settings.source_kind == "system_audio"
-            else settings.microphone_device
-        )
-        source = WasapiPcmCapture(settings.source_kind, selected_device)
+    if settings.source_kind in {"system_audio", "microphone", "window_capture", "application_audio"}:
+        source = build_windows_source(settings)
         return MonitoringEngine(
             source,
             transcriber,

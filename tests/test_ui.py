@@ -874,7 +874,7 @@ def test_files_menu_opens_separate_session_folders(tmp_path, monkeypatch) -> Non
     store.save(AppSettings(source_url="demo://folders"))
     window = MainWindow(settings_store=store)
     session = SessionWorkspace(tmp_path / "sessions", "demo://folders")
-    window.controller.engine = SimpleNamespace(session=session)
+    window.controller.engine = SimpleNamespace(session=session, running=False, worker_alive=False)
     opened: list[Path] = []
 
     class FakeDesktopServices:

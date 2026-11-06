@@ -33,6 +33,13 @@ def _run_self_check(destination: Path | None) -> int:
         "pyaudiowpatch",
         "windows_capture",
         "auralwarden.window_video",
+        "auralwarden.process_audio",
+        "auralwarden._process_audio_native",
+        "auralwarden.audio_routing",
+        "auralwarden._audio_policy_native",
+        "auralwarden.audio_route_guard",
+        "auralwarden.virtual_audio_install",
+        "auralwarden.ui.virtual_audio_dialog",
         "pycaw.pycaw",
         "comtypes.client",
         "faster_whisper",
@@ -143,11 +150,24 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--screenshot-delay-ms", type=int, default=12_000)
     parser.add_argument("--self-check", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--self-check-window", action="store_true", help=argparse.SUPPRESS)
+    parser.add_argument("--self-check-process-window", type=int, help=argparse.SUPPRESS)
+    parser.add_argument("--audio-route-guard", type=Path, help=argparse.SUPPRESS)
+    parser.add_argument("--self-check-routing", action="store_true", help=argparse.SUPPRESS)
+    parser.add_argument("--synthetic-route-renderer", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--self-check-output", type=Path, help=argparse.SUPPRESS)
     parser.add_argument("--control-request", type=Path, help=argparse.SUPPRESS)
     parser.add_argument("--control-output", type=Path, help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
     try:
+        if args.audio_route_guard is not None:
+            from auralwarden.audio_route_guard import run_guard
+            return run_guard(args.audio_route_guard)
+        if args.synthetic_route_renderer:
+            from auralwarden.audio_routing_check import synthetic_renderer
+            return synthetic_renderer()
+        if args.self_check_routing:
+            from auralwarden.audio_routing_check import run_routing_check
+            return run_routing_check(args.self_check_output)
         if args.record_window is not None:
             from auralwarden.window_recording import main as record_window
             return int(record_window(["--hwnd", str(args.record_window)]))
@@ -156,6 +176,9 @@ def main(argv: list[str] | None = None) -> int:
         if args.self_check_window:
             from auralwarden.window_capture_check import run_window_capture_check
             return run_window_capture_check(args.self_check_output)
+        if args.self_check_process_window is not None:
+            from auralwarden.process_audio_check import run_process_capture_check
+            return run_process_capture_check(args.self_check_process_window, args.self_check_output)
         if args.control_request:
             return _run_control_request(args.control_request, args.control_output)
         from auralwarden.ui import run_app

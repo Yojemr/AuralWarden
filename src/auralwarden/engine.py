@@ -84,6 +84,8 @@ class EngineOptions:
             source_label = f"microphone://{settings.microphone_device or 'predeterminado'}"
         elif settings.source_kind == "window_capture":
             source_label = f"window_capture://{settings.window_capture_hwnd}"
+        elif settings.source_kind == "application_audio":
+            source_label = f"application_audio://{settings.window_capture_pid}"
         else:
             source_label = settings.source_url
         return cls(

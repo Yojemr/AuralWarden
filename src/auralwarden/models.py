@@ -7,7 +7,7 @@ from typing import Any
 from uuid import uuid4
 
 
-CURRENT_SETTINGS_SCHEMA = 13
+CURRENT_SETTINGS_SCHEMA = 14
 
 
 class SessionState(StrEnum):

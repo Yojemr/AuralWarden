@@ -1,4 +1,4 @@
-# Interfaz gráfica de AuralWarden 1.0.3
+# Interfaz gráfica de AuralWarden 1.2.0
 
 ## Inicio
 
@@ -65,6 +65,24 @@ El menú de la bandeja permite abrir la ventana, silenciar alertas, restaurar un
 
 ## Fuentes locales y monitorización silenciosa
 
+**Audio de aplicación** captura el audio de la aplicación elegida y de sus procesos hijos. Pulsa **Elegir aplicación**, selecciona una ventana de la aplicación deseada, configura hotwords y pulsa **Iniciar monitoreo**. No necesita elegir altavoces, una extensión ni un controlador virtual. En navegadores como Chrome el alcance es el proceso completo y sus descendientes, no únicamente Meet ni una pestaña: puede incluir otras ventanas o pestañas del mismo navegador. La selección se solicita de nuevo al abrir AuralWarden.
+
+Este modo mantiene transcripción, diarización, alertas, grabación completa de audio y clips WAV. Si activas vídeo completo o clips MP4 antes de iniciar, añade la imagen de la ventana seleccionada usando exclusivamente el audio de esa aplicación. Solo audio funciona con la ventana minimizada; el vídeo requiere mantenerla sin minimizar. Si desaparece el proceso original, la captura se detiene sin elegir otro ni pasar al audio general de Windows.
+
+### Separación de audio por aplicación
+
+No silencies la aplicación en el mezclador de Windows: puede eliminar también el audio capturado. En su lugar:
+
+1. Elige **Audio de aplicación** y, sin monitorear todavía, pulsa **Separar audio** para comprobar el cable. Si falta, permite descargar y abrir el instalador oficial de VB-CABLE estándar de 64 bits. No instala otros productos ni reinicia Windows automáticamente; guarda tu trabajo si el instalador pide reiniciar.
+2. En la aplicación vigilada usa una salida que respete Windows, normalmente **Predeterminada**. Elige su ventana en AuralWarden, configura hotwords e inicia el monitoreo.
+3. Comprueba que llegue señal al medidor. Pulsa **Separar audio** y confirma el aviso: afecta a la aplicación completa, incluidas otras pestañas o ventanas del mismo navegador.
+4. El audio se envía a **CABLE Input** y sigue analizándose. Las demás aplicaciones conservan sus salidas. No es necesario activar «Escuchar este dispositivo» en Windows: hacerlo volvería audible el cable.
+5. Una hotword solicita restaurar la salida anterior y la deja audible. También puedes pulsar **Restaurar audio** o usar su acción en la bandeja. No se vuelve a separar automáticamente.
+
+Detener, cerrar o fallar solicita recuperación. Un auxiliar independiente conserva los valores originales y continúa intentando restaurarlos si AuralWarden se interrumpe. Si la aplicación vigilada se cerró antes, ábrela y reproduce audio para completar la recuperación. Si muestra **Restauración pendiente**, pasa el mouse por el botón para leer el motivo y pulsa para reintentar. Si la aplicación ignora las preferencias de Windows, elige **Predeterminada** dentro de sus ajustes o vuelve a abrirla. No se sustituyen dispositivos ni se toma control de otra aplicación.
+
+El controlador es un componente externo opcional y permanece instalado después de cerrar AuralWarden. No se crea ni elimina un dispositivo por cada sesión. Para revertir su instalación, detén el monitoreo, restaura el audio y usa la opción de desinstalar del instalador oficial; no elimines archivos del controlador manualmente. La captura normal por aplicación sigue funcionando sin VB-CABLE cuando la API nativa está disponible.
+
 **Audio del sistema** utiliza la captura loopback de Windows y analiza toda la mezcla reproducida por la salida seleccionada. No necesita `Mezcla estéreo`, un controlador virtual ni una cuenta externa. La previsualización y los clips MP4 se deshabilitan, pero siguen disponibles la transcripción, diarización, hotwords, alertas, grabación completa y clips WAV.
 
 **Ventana + audio** añade vídeo de una ventana a la captura loopback. Pulsa **Elegir ventana**, selecciona la ventana de Chrome/Meet u otra aplicación y activa **Guardar vídeo completo** y/o **Clips de vídeo** antes de iniciar. La transcripción y las hotwords usan el mismo audio que el vídeo. Windows permanece audible: este modo no ofrece el botón de silenciar salida. La selección se solicita nuevamente en cada apertura para evitar reutilizar una ventana antigua. Mantén la ventana sin minimizar; puede estar detrás de otras ventanas. Al cambiar de pestaña dentro del navegador, el nuevo contenido también se grabará.
@@ -98,7 +116,7 @@ Desactivar la opción elimina la credencial local. El protocolo completo, sus l�
 - La notificación se emite cuando el detector crea una alerta nueva, no cuando una repetición cercana se fusiona con ella.
 - Los clips MP4 están disponibles cuando se activa **Clip de vídeo**.
 - Las fuentes de audio del sistema, micrófono y radio directa solo producen evidencia WAV.
-- En Windows 10 se captura la mezcla completa de la salida; no se aísla una sola aplicación.
+- **Audio del sistema** y **Ventana + audio** capturan la mezcla completa de la salida. **Audio de aplicación** utiliza el aislamiento nativo cuando está disponible; se comprobó en el Windows 10 del equipo de desarrollo, no en todas sus compilaciones.
 - No se integra chat ni autenticación de Twitch o Kick.
 - La transcripción visible procede de Whisper local; los subtítulos de YouTube solo aportan detecciones auxiliares cuando existen.
 - La distinción entre final normal e interrupción se basa en la salida de Streamlink/FFmpeg; una plataforma puede cerrar limpiamente una conexión interrumpida y hacerla parecer finalizada.

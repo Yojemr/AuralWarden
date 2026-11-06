@@ -423,9 +423,10 @@ class WindowVideoRecorder:
 
 
 class WindowPcmCapture:
-    def __init__(self, target: WindowTarget, audio_device: str = "", *, fps: int = 15) -> None:
+    def __init__(self, target: WindowTarget, audio_device: str = "", *, fps: int = 15,
+                 audio_source=None) -> None:
         self.target = target
-        self.audio = WasapiPcmCapture("system_audio", audio_device)
+        self.audio = audio_source if audio_source is not None else WasapiPcmCapture("system_audio", audio_device)
         self.fps = fps
         self.video: WindowVideoRecorder | None = None
         self._directory: Path | None = None

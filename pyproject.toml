@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "auralwarden"
-version = "1.0.3"
+version = "1.2.0"
 description = "Local-first live transcription, hotword monitoring, and event clipping for Windows."
 readme = "README.md"
 requires-python = ">=3.11"

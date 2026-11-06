@@ -1,4 +1,12 @@
-# Interfaz gráfica de AuralWarden 1.2.0
+# Interfaz gráfica de AuralWarden 1.3.0
+
+## Momentos y clips manuales
+
+En el menú superior derecho, **Momentos** permite marcar un instante con una nota (Ctrl+M), crear un clip sin hotword (Ctrl+Alt+C) o consultar los marcadores de la sesión. Los atajos funcionan dentro de AuralWarden, no son atajos globales de Windows. La bandeja también ofrece **Crear clip manual**.
+
+El clip manual usa los tipos de clip que estén activados y los segundos anteriores y posteriores configurados. No activa una captura de vídeo que no se hubiera preparado antes. No genera una hotword, un sonido de detección ni la restauración del audio separado. Espera al intervalo posterior antes de abrir el resultado; detener antes puede producir un fragmento incompleto.
+
+La biblioteca **Transcripciones** conserva el filtro por título/fecha/archivo y añade una búsqueda en el texto abierto con Ctrl+F, contador y navegación anterior/siguiente. **Marcadores** abre las notas de ese archivo o sesión y permite añadir una hora HH:MM:SS. Las notas se guardan aparte, sin editar el original; mover la sesión a otra ruta no reasocia automáticamente sus marcadores.
 
 ## Inicio
 

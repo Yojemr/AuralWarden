@@ -757,6 +757,7 @@ class ActivityCard(QFrame):
     def __init__(self, payload: dict[str, Any], parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.event_id = str(payload.get("event_id") or "")
+        self.is_manual = bool(payload.get("manual", False))
         self._expected_media = {
             media_type
             for media_type, requested in (
@@ -793,11 +794,11 @@ class ActivityCard(QFrame):
                 f"color:{speaker_color(speaker)};font-weight:600;"
             )
             layout.addWidget(speaker_label)
-        self.score_text = QLabel(f"Coincidencia {float(payload.get('score') or 0):.0f} %")
+        self.score_text = QLabel("Acción manual · sin hotword" if self.is_manual else f"Coincidencia {float(payload.get('score') or 0):.0f} %")
         self.score_text.setStyleSheet("color:#5ee0b9;")
         score_row = QHBoxLayout()
         score_icon = QLabel()
-        score_icon.setPixmap(aw_icon("fa6s.crosshairs", "#48d7aa").pixmap(14, 14))
+        score_icon.setPixmap(aw_icon("fa6s.hand-pointer" if self.is_manual else "fa6s.crosshairs", "#48d7aa").pixmap(14, 14))
         score_row.addWidget(score_icon)
         score_row.addWidget(self.score_text)
         score_row.addStretch()
@@ -919,6 +920,8 @@ class ActivityFeed(QFrame):
         self._by_event[event_id] = card
         count = len(self._by_event)
         unit = "alerta" if count == 1 else "alertas"
+        if any(item.is_manual for item in self._by_event.values()):
+            unit = "elemento" if count == 1 else "elementos"
         self.total.setText(f"{count} {unit}")
 
     def mark_clip(self, payload: dict[str, Any]) -> None:

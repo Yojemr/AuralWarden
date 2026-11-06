@@ -31,6 +31,8 @@ from PySide6.QtWidgets import (
 
 from auralwarden import __version__
 from auralwarden.alert_history import AlertHistoryStore
+from auralwarden.bookmarks import BookmarkStore
+from auralwarden.ui.moments_dialog import MomentsDialog
 from auralwarden.captions import is_youtube_source
 from auralwarden.filenames import date_time_label
 from auralwarden.local_control import (
@@ -173,6 +175,7 @@ class MainWindow(QMainWindow):
             or fallback_source_info(self.settings.source_url).title
         )
         self._last_match = "Sin coincidencias"
+        self.bookmarks = BookmarkStore(self.store.path.with_name("bookmarks.json"))
         self._clip_count = 0
         self._clip_events: set[str] = set()
         self._speakers: set[str] = set()
@@ -532,6 +535,16 @@ class MainWindow(QMainWindow):
         menu_button.setProperty("flat", True)
         menu_button.setToolTip("Preferencias, modelos e información legal")
         app_menu = QMenu(menu_button)
+        moments_menu = app_menu.addMenu("Momentos")
+        mark_action = moments_menu.addAction("Marcar momento · nota")
+        mark_action.setShortcut("Ctrl+M")
+        mark_action.triggered.connect(self.add_moment)
+        self.manual_clip_action = moments_menu.addAction("Crear clip manual")
+        self.manual_clip_action.setShortcut("Ctrl+Alt+C")
+        self.manual_clip_action.setEnabled(False)
+        self.manual_clip_action.triggered.connect(self.create_manual_clip)
+        moments_menu.addAction("Ver marcadores de esta sesión").triggered.connect(self.open_moments)
+        app_menu.addSeparator()
         preferences_action = app_menu.addAction(
             aw_icon("fa6s.gear", "#b8c8ce"), "Preferencias"
         )
@@ -1138,6 +1151,8 @@ class MainWindow(QMainWindow):
                 self.resources.update_audio_level(self._last_audio_level)
                 return
             code = str(event.payload.get("code") or "")
+            if code == "manual_clip_requested":
+                self.activity.add_detection(event.payload)
             if code == "capture_backlog":
                 queued = float(event.payload.get("queued_seconds") or 0.0)
                 dropped = float(event.payload.get("dropped_seconds") or 0.0)
@@ -1186,6 +1201,8 @@ class MainWindow(QMainWindow):
                 "full_video_failed",
                 "video_recovery_available",
                 "video_cleanup_deferred",
+                "manual_clip_requested",
+                "manual_clip_cancelled",
             }:
                 message = str(event.payload.get("message") or "")
                 self._status_detail = message
@@ -1220,6 +1237,7 @@ class MainWindow(QMainWindow):
 
     def _set_state(self, state: SessionState) -> None:
         self._current_state = state
+        self.manual_clip_action.setEnabled(state == SessionState.RUNNING)
         labels = {
             SessionState.IDLE: "En espera",
             SessionState.STARTING: "Preparando monitor",
@@ -1801,7 +1819,42 @@ class MainWindow(QMainWindow):
                 roots.extend(
                     [previous / "data" / "sessions", previous / "data" / "transcripts"]
                 )
-        TranscriptLibraryDialog(roots, self).exec()
+        TranscriptLibraryDialog(roots, self, bookmark_store=self.bookmarks).exec()
+
+    def add_moment(self) -> None:
+        engine = getattr(self.controller, "engine", None)
+        scope = self.controller.session_path
+        elapsed = getattr(engine, "captured_until_seconds", 0.0)
+        if scope is None or elapsed <= 0:
+            QMessageBox.information(self, "Todavía no hay una sesión", "Inicia el monitoreo y espera a recibir audio. También puedes añadir marcadores al abrir una transcripción anterior.")
+            return
+        note, accepted = QInputDialog.getMultiLineText(self, "Marcar momento", "Nota (hasta 1.000 caracteres):")
+        if not accepted:
+            return
+        try:
+            self.bookmarks.add(scope, elapsed, note)
+            self.status_label.setToolTip("Marcador guardado. Puedes revisarlo desde Momentos o Transcripciones.")
+        except (OSError, ValueError) as exc:
+            QMessageBox.warning(self, "No se pudo guardar el marcador", str(exc))
+
+    def open_moments(self) -> None:
+        scope = self.controller.session_path
+        if scope is None:
+            QMessageBox.information(self, "Sin sesión", "Abre una transcripción anterior para consultar sus marcadores.")
+            return
+        engine = getattr(self.controller, "engine", None)
+        MomentsDialog(self.bookmarks, scope, self,
+            elapsed_seconds=getattr(engine, "captured_until_seconds", 0.0)).exec()
+
+    def create_manual_clip(self) -> None:
+        engine = getattr(self.controller, "engine", None)
+        try:
+            if engine is None:
+                raise ValueError("Inicia el monitoreo antes de crear un clip.")
+            engine.request_manual_clip()
+            self.status_label.setToolTip("Clip manual solicitado. Espera el intervalo posterior configurado; aparecerá en la carpeta de clips.")
+        except (OSError, ValueError) as exc:
+            QMessageBox.warning(self, "No se pudo crear el clip", str(exc))
 
     @staticmethod
     def _open_evidence(path: str) -> None:
@@ -1916,6 +1969,8 @@ class MainWindow(QMainWindow):
         self.tray_last = self.tray_menu.addAction(self._last_match)
         self.tray_last.setEnabled(False)
         self.tray_menu.addSeparator()
+        self.tray_manual_clip = self.tray_menu.addAction("Crear clip manual")
+        self.tray_manual_clip.triggered.connect(self.create_manual_clip)
         open_action = self.tray_menu.addAction(aw_icon("fa6s.window-restore"), "Abrir AuralWarden")
         open_action.triggered.connect(self._restore_window)
         self.tray_mute = self.tray_menu.addAction(aw_icon("fa6s.volume-high"), "Silenciar alertas")
@@ -1942,6 +1997,7 @@ class MainWindow(QMainWindow):
         self.tray_status.setText(self.status_label.text())
         self.tray_last.setText(self._last_match)
         self.tray_stop.setEnabled(self.controller.running)
+        self.tray_manual_clip.setEnabled(self._current_state == SessionState.RUNNING)
 
     def _tray_activated(self, reason: QSystemTrayIcon.ActivationReason) -> None:
         if reason in {

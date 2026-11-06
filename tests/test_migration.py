@@ -41,6 +41,8 @@ def test_portable_migration_links_models_and_ignores_personal_outputs(tmp_path: 
         json.dumps({"schema_version": 1, "alerts": [{"event_id": "evt-1"}]}),
         encoding="utf-8",
     )
+    (old_data / "bookmarks.json").write_text(
+        json.dumps({"schema": 1, "bookmarks": [{"id": "note-1"}]}), encoding="utf-8")
     new_root.mkdir()
 
     result = migrate_latest_portable_installation(new_root, new_root / "data")
@@ -49,6 +51,7 @@ def test_portable_migration_links_models_and_ignores_personal_outputs(tmp_path: 
     assert result.speaker_profiles_imported
     assert result.presets_imported
     assert result.alert_history_imported
+    assert result.bookmarks_imported
     linked = new_root / "data" / "models" / "large-v3-turbo" / "model.bin"
     assert linked.read_bytes() == b"model-data"
     assert linked.stat().st_ino == model.stat().st_ino
@@ -56,5 +59,6 @@ def test_portable_migration_links_models_and_ignores_personal_outputs(tmp_path: 
     assert (new_root / "data" / "speaker-profiles.json").is_file()
     assert (new_root / "data" / "presets.json").is_file()
     assert (new_root / "data" / "alert-history.json").is_file()
+    assert (new_root / "data" / "bookmarks.json").is_file()
     migrated = json.loads((new_root / "data" / "settings.json").read_text(encoding="utf-8"))
     assert Path(migrated["model_name"]) == linked.parent.resolve()

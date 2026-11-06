@@ -26,6 +26,8 @@ El modo **Micrófono** puede captar conversaciones cercanas. Debe usarse únicam
 
 ## Transcripción
 
+Los marcadores son voluntarios y se guardan en `data/bookmarks.json` con hora, nota, fecha y ruta local de la sesión o archivo. No se escriben anotaciones dentro de los originales ni se envían a servicios externos. Los clips manuales son solicitudes explícitas del usuario y conservan únicamente el intervalo configurado, como los clips automáticos; no se presentan como detecciones de voz.
+
 La transcripción visible permanece en memoria durante la sesión, pero AuralWarden mantiene además un diario incremental local dentro de `data/sessions` para poder recuperarla después de un cierre inesperado. El archivo TXT o JSON de consulta permanente solo se exporta cuando se activa o confirma el guardado. Las coincidencias sí se registran por defecto con hora, contexto y confianza para conservar la finalidad principal de las alertas.
 
 Los títulos, autores y subtítulos recibidos de plataformas se muestran como texto inerte. No se interpretan como HTML ni pueden solicitar imágenes locales o de red desde la interfaz.

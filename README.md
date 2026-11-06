@@ -8,8 +8,8 @@
   </p>
 
   <p>
-    <img alt="Versión" src="https://img.shields.io/badge/versi%C3%B3n-1.2.0-00C8D7?style=flat-square">
-    <img alt="Estado" src="https://img.shields.io/badge/estado-validaci%C3%B3n%20local-22C55E?style=flat-square">
+    <img alt="Versión" src="https://img.shields.io/badge/versi%C3%B3n-1.3.0-00C8D7?style=flat-square">
+    <img alt="Estado" src="https://img.shields.io/badge/distribuci%C3%B3n-c%C3%B3digo%20fuente-22C55E?style=flat-square">
     <img alt="Windows" src="https://img.shields.io/badge/Windows-10%20%7C%2011-0078D4?style=flat-square&logo=windows11&logoColor=white">
     <img alt="Python" src="https://img.shields.io/badge/Python-3.12-3776AB?style=flat-square&logo=python&logoColor=white">
     <img alt="Procesamiento local" src="https://img.shields.io/badge/STT-local-18A999?style=flat-square">
@@ -28,7 +28,7 @@
 </div>
 
 > [!IMPORTANT]
-> **AuralWarden 1.2.0 añade separación de audio mediante VB-CABLE opcional y conserva la captura por aplicación y el vídeo de ventanas; está en validación local.** Puede enviar una aplicación al cable y seguir analizándola mientras las demás mantienen sus salidas. Una hotword restaura su sonido sin volver a silenciarla. Antes de publicar binarios resta completar la correspondencia de fuentes de sus bibliotecas nativas. El portable CPU y los componentes opcionales se validan por separado. Las compilaciones iniciales no están firmadas digitalmente: descárgalas únicamente del perfil oficial de [Yojemr](https://github.com/Yojemr) y comprueba el SHA-256 publicado.
+> **AuralWarden 1.3.0 añade búsqueda en transcripciones, marcadores y clips manuales.** Conserva la separación de audio mediante VB-CABLE y la restauración por hotword de 1.2.0. La [Release 1.3.0 contiene solo código fuente](https://github.com/Yojemr/AuralWarden/releases/tag/v1.3.0), sin instalador ni ejecutable adjunto. Antes de publicar binarios resta completar la correspondencia de fuentes de sus bibliotecas nativas. El portable CPU y los componentes opcionales se validan por separado. Las compilaciones iniciales no están firmadas digitalmente: obtén los archivos únicamente del perfil oficial de [Yojemr](https://github.com/Yojemr).
 
 ![Interfaz principal de AuralWarden](docs/assets/auralwarden-dashboard.png)
 
@@ -72,11 +72,11 @@ Su objetivo no es obligar a grabarlo todo. Por defecto mantiene una transcripci�
 ### Usar la carpeta portable
 
 > [!NOTE]
-> La publicación 1.2.0 en GitHub incluye únicamente el código fuente. El portable público queda pendiente de completar la preparación de fuentes correspondientes de sus bibliotecas nativas. Mientras tanto, utiliza las instrucciones de ejecución desde código fuente; no hay un ejecutable adjunto a esta publicación.
+> La publicación 1.3.0 en GitHub incluye únicamente el código fuente. El portable público queda pendiente de completar la preparación de fuentes correspondientes de sus bibliotecas nativas. Mientras tanto, utiliza las instrucciones de ejecución desde código fuente; no hay un ejecutable adjunto a esta publicación. Los pasos siguientes se aplican a una carpeta portable compilada localmente o a una futura distribución binaria.
 
-La versión pública está diseñada para funcionar sin instalar Python:
+La carpeta portable está diseñada para funcionar sin instalar Python:
 
-1. Descarga la carpeta publicada en [Releases](https://github.com/Yojemr/AuralWarden/releases) y extráela completa.
+1. Obtén una compilación portable completa; los archivos de código fuente de GitHub no contienen `AuralWarden.exe`.
 2. Ejecuta `AuralWarden.exe` sin mover por separado las carpetas `runtime` o `docs`.
 3. En **Preparar AuralWarden**, revisa la recomendación y descarga un modelo.
 4. Elige **Enlace**, **Audio de aplicación**, **Audio del sistema**, **Ventana + audio** o **Micrófono**. Para aislar Chrome/Meet, elige **Audio de aplicación > Elegir aplicación**. Activa el vídeo completo o los clips antes de iniciar si también quieres imagen de esa ventana.
@@ -127,6 +127,14 @@ El perfil `public` prepara captura, interfaz, transcripción CPU, diarización y
 
 > [!CAUTION]
 > La diarización y los perfiles son estimaciones probabilísticas. No deben utilizarse como autenticación biométrica, prueba de identidad ni base única para decisiones importantes.
+
+### Revisión de sesiones
+
+- Búsqueda literal dentro de la transcripción abierta, con **Ctrl+F**, contador y navegación anterior/siguiente.
+- Marcadores con hora y nota desde **Menú > Momentos**, durante una sesión o al consultar una transcripción guardada.
+- **Ctrl+M** guarda una nota en el instante de pulsarlo, aunque después se tarde en escribirla.
+- **Crear clip manual**, desde Momentos, la bandeja o **Ctrl+Alt+C**, recupera el intervalo anterior y posterior configurado sin necesitar una hotword. Debe estar activo al menos un tipo de clip; el vídeo necesita haberse preparado antes de iniciar la sesión.
+- Los marcadores se guardan aparte y no reescriben transcripciones originales. Un clip manual no genera una falsa detección, no suena como una hotword y no restaura por sí mismo el audio separado.
 
 ### Alertas y evidencia
 
@@ -425,10 +433,11 @@ Para conservar todas las carpetas anteriores durante una validación, añade `-P
 
 ## Estado del proyecto
 
-### Versión 1.2.0 — Funcionalidad local
+### Versión 1.3.0 — Revisión de sesiones
 
 - [x] Fuentes web, archivos, audio de Windows, audio por aplicación, micrófono y ventanas locales.
 - [x] Separación opcional de audio mediante VB-CABLE, restauración por hotword y recuperación independiente ante cierres abruptos.
+- [x] Búsqueda en el texto abierto, marcadores locales y solicitud de clips manuales sin hotwords.
 - [x] Transcripción local, VAD, segunda pasada y hotwords entre fragmentos.
 - [x] Clips de audio/vídeo y grabación completa opcional.
 - [x] Subtítulos auxiliares de YouTube con reintento y renovación.
@@ -503,7 +512,7 @@ Ruido, música, solapamiento, fragmentos breves y cambios de micrófono pueden s
 - [Contribuciones](CONTRIBUTING.md)
 - [Componentes y licencias de terceros](docs/THIRD_PARTY_NOTICES.md)
 - [Lista de verificación para publicaciones](docs/RELEASE_CHECKLIST.md)
-- [Notas de AuralWarden 1.2.0](docs/RELEASE_NOTES_1.2.0.md)
+- [Notas de AuralWarden 1.3.0](docs/RELEASE_NOTES_1.3.0.md)
 - [Guía de publicación inicial en GitHub](docs/GITHUB_PUBLISHING.md)
 - [Historial de versiones](CHANGELOG.md)
 

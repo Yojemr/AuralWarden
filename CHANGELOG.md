@@ -8,6 +8,34 @@ El proyecto utiliza versionado semántico: `MAJOR.MINOR.PATCH`.
 
 - Correcciones posteriores basadas en informes reproducibles de otros equipos.
 - Validación y empaquetado opcional de un componente `whisper.cpp` con Vulkan para hardware AMD e Intel.
+- Instalador reutilizable para Windows previsto para 1.4.0, con actualización que conserve los datos del usuario.
+
+## [1.3.0] - 2026-11-06
+
+### Added
+
+- Búsqueda literal en la transcripción abierta, sin distinguir mayúsculas, con Ctrl+F, contador, navegación circular y procesamiento acotado a 10.000 coincidencias.
+- Marcadores manuales con hora y nota, almacenados localmente en `bookmarks.json` sin modificar las transcripciones originales. Gestión desde Momentos y desde la biblioteca de transcripciones.
+- Solicitud de clips manuales desde el menú, la bandeja o Ctrl+Alt+C, utilizando los intervalos y tipos de evidencia configurados. No genera una hotword ni una notificación de detección.
+- Reloj de audio capturado independiente del avance de Whisper para ubicar marcadores y clips aunque la transcripción se retrase.
+- Cola acotada de ocho clips manuales en curso, preferencias fijadas al solicitarlos y aviso de cancelación si falla la captura antes de procesarlos.
+- Migración de marcadores entre carpetas portables; sus notas y referencias permanecen fuera del código publicado.
+
+### Distribution
+
+- Release `v1.3.0` de código fuente, sin instalador, ejecutable ni componentes binarios adjuntos. La preparación de fuentes correspondientes para una distribución binaria pública sigue pendiente.
+
+### Fixed
+
+- Enter y los botones de navegación actualizan inmediatamente una búsqueda recién cambiada, sin seleccionar resultados del término anterior durante la espera de actualización.
+- Los marcadores siguen asociados a la sesión cuando la carpeta `transcripts` cambia de mayúsculas o minúsculas.
+- Los tiempos nulos, booleanos o fuera del rango numérico se rechazan con un mensaje de validación, sin sobrescribir un archivo de notas existente ni dejar escapar errores de conversión.
+
+### Validation scope
+
+- Suite local de 285 pruebas aprobada, incluyendo continuidad de hotwords durante clips manuales, límites de solicitudes, conservación de originales y regresiones de búsqueda y marcadores.
+- Revisión visual con datos sintéticos de búsqueda, marcadores y actividad manual; sin capturar contenido de aplicaciones ni cambiar sus salidas de audio.
+- Queda pendiente una sesión prolongada de 1.3.0 y su validación en otro equipo.
 
 ## [1.2.0] - 2026-11-05
 

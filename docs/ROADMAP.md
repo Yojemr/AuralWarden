@@ -1,5 +1,18 @@
 # Hoja de ruta
 
+## 1.4.0 — Instalación y actualizaciones (previsto)
+
+- Receta reutilizable para generar el instalador de Windows en futuras versiones.
+- Instalación y actualización conservando modelos, configuración, clips y transcripciones.
+- Componentes opcionales separados y preparación de la distribución binaria pública.
+
+## 1.3.0 — Revisión de sesiones
+
+- Búsqueda dentro de la transcripción abierta y navegación por coincidencias.
+- Marcadores con hora y nota, sin editar los originales.
+- Clips manuales sin hotwords, usando los intervalos configurados y el reloj de captura.
+- Migración de notas y pruebas de límites, concurrencia y continuidad de la detección automática.
+
 ## 1.2.0 — Separación opcional de audio
 
 - VB-CABLE estándar opcional, preparado desde la aplicación con descarga verificada y sin productos adicionales.

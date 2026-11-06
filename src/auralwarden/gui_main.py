@@ -25,6 +25,8 @@ def _write_startup_error() -> None:
 def _run_self_check(destination: Path | None) -> int:
     modules = (
         "auralwarden.components",
+        "auralwarden.bookmarks",
+        "auralwarden.ui.moments_dialog",
         "auralwarden.hardware",
         "auralwarden.transcribers.whisper_cpp",
         "PySide6.QtCore",

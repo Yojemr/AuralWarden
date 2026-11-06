@@ -122,6 +122,7 @@ def test_demo_never_reuses_real_capture_settings(tmp_path):
     app.processEvents()
 
 
+@pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="FFmpeg is required to finalize MP4")
 def test_recording_dialog_timer_and_stop_save_the_video(tmp_path, monkeypatch):
     pytest.importorskip("PySide6")
     np = pytest.importorskip("numpy")

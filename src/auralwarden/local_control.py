@@ -32,7 +32,7 @@ def redact_source(value: str) -> str:
     source = str(value or "").strip()
     if not source:
         return ""
-    if source.startswith(("system_audio://", "microphone://", "demo://")):
+    if source.startswith(("system_audio://", "microphone://", "window_capture://", "application_audio://", "demo://")):
         return source.split("?", 1)[0].split("#", 1)[0]
     try:
         parsed = urlsplit(source)

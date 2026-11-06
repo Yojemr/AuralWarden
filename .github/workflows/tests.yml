@@ -38,10 +38,12 @@ jobs:
             requirements-build.lock.txt
 
       - name: Instalar dependencias públicas
-        run: python -m pip install -e ".[dev,desktop-cpu]" -c requirements-build.lock.txt
+        run: |
+          python -m venv .ci-venv
+          .\.ci-venv\Scripts\python.exe -m pip install -e ".[dev,desktop-cpu]" -c requirements-build.lock.txt
 
       - name: Comprobar dependencias
-        run: python -m pip check
+        run: .\.ci-venv\Scripts\python.exe -m pip check
 
       - name: Ejecutar pruebas
-        run: python -m pytest tests
+        run: .\.ci-venv\Scripts\python.exe -m pytest tests

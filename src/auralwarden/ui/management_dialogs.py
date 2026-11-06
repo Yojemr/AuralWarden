@@ -5,8 +5,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Iterable
 
-from PySide6.QtCore import QUrl, Qt
-from PySide6.QtGui import QDesktopServices, QTextCursor
+from PySide6.QtCore import QUrl, Qt, QTimer
+from PySide6.QtGui import QDesktopServices, QTextCursor, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QComboBox,
     QAbstractItemView,
@@ -39,6 +39,8 @@ from auralwarden.transcript_archive import (
     load_archived_transcript,
 )
 from auralwarden.ui.widgets import aw_icon
+from auralwarden.bookmarks import BookmarkStore
+from auralwarden.ui.moments_dialog import MomentsDialog
 
 
 class PresetDialog(QDialog):
@@ -338,6 +340,7 @@ class TranscriptLibraryDialog(QDialog):
         self,
         sessions_root: Path | Iterable[Path],
         parent: QWidget | None = None,
+        *, bookmark_store: BookmarkStore | None = None,
     ) -> None:
         super().__init__(parent)
         self.sessions_roots = (
@@ -356,6 +359,9 @@ class TranscriptLibraryDialog(QDialog):
         )
         self._visible_records: list[ArchivedTranscript] = []
         self._current_path: Path | None = None
+        self.bookmark_store = bookmark_store
+        self._content_matches: list[tuple[int, int]] = []
+        self._match_index = -1
         self.setWindowTitle("Transcripciones anteriores")
         self.setMinimumSize(980, 620)
         layout = QVBoxLayout(self)
@@ -400,6 +406,28 @@ class TranscriptLibraryDialog(QDialog):
         )
         right_layout.addWidget(self.title_label)
         right_layout.addWidget(self.detail_label)
+        find_bar = QHBoxLayout()
+        self.content_search = QLineEdit()
+        self.content_search.setPlaceholderText("Buscar palabras en esta transcripción · Ctrl+F")
+        self.content_search.setToolTip("Búsqueda literal, sin distinguir mayúsculas. No modifica el archivo.")
+        self.match_count = QLabel("0 coincidencias")
+        self.previous_match = QPushButton("Anterior")
+        self.next_match = QPushButton("Siguiente")
+        self.previous_match.clicked.connect(lambda: self._navigate_content_match(-1))
+        self.next_match.clicked.connect(lambda: self._navigate_content_match(1))
+        self.content_search.returnPressed.connect(lambda: self._navigate_content_match(1))
+        self._find_timer = QTimer(self)
+        self._find_timer.setSingleShot(True)
+        self._find_timer.setInterval(180)
+        self._find_timer.timeout.connect(self._update_content_matches)
+        self.content_search.textChanged.connect(lambda: self._find_timer.start())
+        shortcut = QShortcut(QKeySequence.StandardKey.Find, self)
+        shortcut.activated.connect(self.content_search.setFocus)
+        find_bar.addWidget(self.content_search, 1)
+        find_bar.addWidget(self.match_count)
+        find_bar.addWidget(self.previous_match)
+        find_bar.addWidget(self.next_match)
+        right_layout.addLayout(find_bar)
         right_layout.addWidget(self.viewer, 1)
         splitter.addWidget(left)
         splitter.addWidget(right)
@@ -418,6 +446,10 @@ class TranscriptLibraryDialog(QDialog):
         self.folder_button.setEnabled(False)
         self.folder_button.clicked.connect(self._open_folder)
         actions.addWidget(self.choose_button)
+        self.moments_button = QPushButton("Marcadores")
+        self.moments_button.setEnabled(False)
+        self.moments_button.clicked.connect(self._open_moments)
+        actions.addWidget(self.moments_button)
         actions.addStretch()
         actions.addWidget(self.folder_button)
         layout.addLayout(actions)
@@ -483,7 +515,56 @@ class TranscriptLibraryDialog(QDialog):
         self.viewer.setPlainText(text)
         self.viewer.moveCursor(QTextCursor.MoveOperation.Start)
         self.folder_button.setEnabled(True)
+        self.moments_button.setEnabled(self.bookmark_store is not None)
+        self._update_content_matches()
         return True
+
+    def _update_content_matches(self):
+        self._find_timer.stop()
+        self._content_matches.clear()
+        self._match_index = -1
+        selection = self.viewer.textCursor()
+        selection.clearSelection()
+        self.viewer.setTextCursor(selection)
+        query = self.content_search.text()
+        if query:
+            cursor = QTextCursor(self.viewer.document())
+            while len(self._content_matches) < 10_000:
+                cursor = self.viewer.document().find(query, cursor)
+                if cursor.isNull():
+                    break
+                self._content_matches.append((cursor.selectionStart(), cursor.selectionEnd()))
+        enabled = bool(self._content_matches)
+        self.previous_match.setEnabled(enabled)
+        self.next_match.setEnabled(enabled)
+        self.match_count.setText("0 coincidencias")
+        if enabled:
+            self._move_content_match(1)
+
+    def _navigate_content_match(self, direction):
+        if self._find_timer.isActive():
+            self._update_content_matches()
+            if direction < 0:
+                self._move_content_match(-1)
+            return
+        self._move_content_match(direction)
+
+    def _move_content_match(self, direction):
+        if not self._content_matches:
+            return
+        self._match_index = (self._match_index + direction) % len(self._content_matches)
+        start, end = self._content_matches[self._match_index]
+        cursor = QTextCursor(self.viewer.document())
+        cursor.setPosition(start)
+        cursor.setPosition(end, QTextCursor.MoveMode.KeepAnchor)
+        self.viewer.setTextCursor(cursor)
+        self.viewer.ensureCursorVisible()
+        suffix = "+" if len(self._content_matches) == 10_000 else ""
+        self.match_count.setText(f"{self._match_index + 1}/{len(self._content_matches)}{suffix}")
+
+    def _open_moments(self):
+        if self._current_path is not None and self.bookmark_store is not None:
+            MomentsDialog(self.bookmark_store, self._current_path, self).exec()
 
     def _choose_file(self) -> None:
         selected, _ = QFileDialog.getOpenFileName(
@@ -509,3 +590,5 @@ class TranscriptLibraryDialog(QDialog):
         )
         self.viewer.clear()
         self.folder_button.setEnabled(False)
+        self.moments_button.setEnabled(False)
+        self._update_content_matches()

@@ -8,8 +8,8 @@
   </p>
 
   <p>
-    <img alt="Versión" src="https://img.shields.io/badge/versi%C3%B3n-1.0.3-00C8D7?style=flat-square">
-    <img alt="Estado" src="https://img.shields.io/badge/estado-validaci%C3%B3n%20local-22C55E?style=flat-square">
+    <img alt="Versión" src="https://img.shields.io/badge/versi%C3%B3n-1.3.0-00C8D7?style=flat-square">
+    <img alt="Estado" src="https://img.shields.io/badge/distribuci%C3%B3n-c%C3%B3digo%20fuente-22C55E?style=flat-square">
     <img alt="Windows" src="https://img.shields.io/badge/Windows-10%20%7C%2011-0078D4?style=flat-square&logo=windows11&logoColor=white">
     <img alt="Python" src="https://img.shields.io/badge/Python-3.12-3776AB?style=flat-square&logo=python&logoColor=white">
     <img alt="Procesamiento local" src="https://img.shields.io/badge/STT-local-18A999?style=flat-square">
@@ -28,13 +28,13 @@
 </div>
 
 > [!IMPORTANT]
-> **AuralWarden 1.0.3 añade captura de ventanas y conserva las correcciones de la auditoría; está en validación local.** Antes de publicar binarios resta completar la correspondencia de fuentes de sus bibliotecas nativas. El portable CPU y los componentes opcionales se validan por separado. Las compilaciones iniciales no están firmadas digitalmente: descárgalas únicamente del perfil oficial de [Yojemr](https://github.com/Yojemr) y comprueba el SHA-256 publicado.
+> **AuralWarden 1.3.0 añade búsqueda en transcripciones, marcadores y clips manuales.** Conserva la separación de audio mediante VB-CABLE y la restauración por hotword de 1.2.0. La [Release 1.3.0 contiene solo código fuente](https://github.com/Yojemr/AuralWarden/releases/tag/v1.3.0), sin instalador ni ejecutable adjunto. Antes de publicar binarios resta completar la correspondencia de fuentes de sus bibliotecas nativas. El portable CPU y los componentes opcionales se validan por separado. Las compilaciones iniciales no están firmadas digitalmente: obtén los archivos únicamente del perfil oficial de [Yojemr](https://github.com/Yojemr).
 
 ![Interfaz principal de AuralWarden](docs/assets/auralwarden-dashboard.png)
 
 ## ¿Qué es AuralWarden?
 
-AuralWarden es una aplicación de escritorio que permanece pendiente de una transmisión, del audio general de Windows o de un micrófono. Convierte la voz a texto mediante modelos Whisper ejecutados en el propio equipo y avisa cuando encuentra una palabra o frase configurada.
+AuralWarden es una aplicación de escritorio que permanece pendiente de una transmisión, de una aplicación elegida, del audio general de Windows o de un micrófono. Convierte la voz a texto mediante modelos Whisper ejecutados en el propio equipo y avisa cuando encuentra una palabra o frase configurada.
 
 Su objetivo no es obligar a grabarlo todo. Por defecto mantiene una transcripción temporal y un búfer corto en memoria. Cuando ocurre algo importante puede notificar, recuperar los segundos anteriores y posteriores y crear un clip de audio o vídeo con contexto.
 
@@ -71,13 +71,18 @@ Su objetivo no es obligar a grabarlo todo. Por defecto mantiene una transcripci�
 
 ### Usar la carpeta portable
 
-La versión pública está diseñada para funcionar sin instalar Python:
+> [!NOTE]
+> La publicación 1.3.0 en GitHub incluye únicamente el código fuente. El portable público queda pendiente de completar la preparación de fuentes correspondientes de sus bibliotecas nativas. Mientras tanto, utiliza las instrucciones de ejecución desde código fuente; no hay un ejecutable adjunto a esta publicación. Los pasos siguientes se aplican a una carpeta portable compilada localmente o a una futura distribución binaria.
 
-1. Descarga la carpeta publicada en [Releases](https://github.com/Yojemr/AuralWarden/releases) y extráela completa.
+La carpeta portable está diseñada para funcionar sin instalar Python:
+
+1. Obtén una compilación portable completa; los archivos de código fuente de GitHub no contienen `AuralWarden.exe`.
 2. Ejecuta `AuralWarden.exe` sin mover por separado las carpetas `runtime` o `docs`.
 3. En **Preparar AuralWarden**, revisa la recomendación y descarga un modelo.
-4. Elige **Enlace**, **Audio del sistema**, **Ventana + audio** o **Micrófono**. Para vídeo de Meet, selecciona explícitamente su ventana y activa la grabación completa o los clips antes de iniciar.
+4. Elige **Enlace**, **Audio de aplicación**, **Audio del sistema**, **Ventana + audio** o **Micrófono**. Para aislar Chrome/Meet, elige **Audio de aplicación > Elegir aplicación**. Activa el vídeo completo o los clips antes de iniciar si también quieres imagen de esa ventana.
 5. Agrega una o más hotwords, ajusta las opciones de clips y pulsa **Iniciar monitoreo**.
+
+Para escuchar una aplicación sin reproducirla en los altavoces, consulta [Separación de audio](docs/GUI.md#separación-de-audio-por-aplicación). La captura normal no requiere el cable: su instalación es opcional y no forma parte del portable.
 
 El asistente crea la estructura de datos, muestra el tamaño de cada modelo y verifica cada archivo antes de activarlo. Una descarga incompleta o alterada no reemplaza un modelo válido.
 
@@ -123,6 +128,14 @@ El perfil `public` prepara captura, interfaz, transcripción CPU, diarización y
 > [!CAUTION]
 > La diarización y los perfiles son estimaciones probabilísticas. No deben utilizarse como autenticación biométrica, prueba de identidad ni base única para decisiones importantes.
 
+### Revisión de sesiones
+
+- Búsqueda literal dentro de la transcripción abierta, con **Ctrl+F**, contador y navegación anterior/siguiente.
+- Marcadores con hora y nota desde **Menú > Momentos**, durante una sesión o al consultar una transcripción guardada.
+- **Ctrl+M** guarda una nota en el instante de pulsarlo, aunque después se tarde en escribirla.
+- **Crear clip manual**, desde Momentos, la bandeja o **Ctrl+Alt+C**, recupera el intervalo anterior y posterior configurado sin necesitar una hotword. Debe estar activo al menos un tipo de clip; el vídeo necesita haberse preparado antes de iniciar la sesión.
+- Los marcadores se guardan aparte y no reescriben transcripciones originales. Un clip manual no genera una falsa detección, no suena como una hotword y no restaura por sí mismo el audio separado.
+
 ### Alertas y evidencia
 
 - Notificaciones de Windows y tres sonidos integrados realmente diferentes.
@@ -163,10 +176,20 @@ El perfil `public` prepara captura, interfaz, transcripción CPU, diarización y
 | Radio y flujos directos | Streamlink o FFmpeg | HLS, DASH, MP3, AAC, Ogg y otros formatos reconocidos por las herramientas. |
 | Archivo local | FFmpeg | Audio o vídeo elegido por el usuario. |
 | Audio general de Windows | WASAPI loopback | Captura todo lo reproducido por el dispositivo seleccionado. |
+| Audio de una aplicación | WASAPI process loopback | Selección explícita; incluye sus procesos hijos, no otras aplicaciones independientes. En Chrome puede incluir otras pestañas/ventanas. No silenciar en el mezclador. |
 | Ventana local, como Chrome/Meet | Windows Graphics Capture + WASAPI | Solo la ventana elegida; audio completo de la salida seleccionada. No silencia Windows. |
 | Micrófono | WASAPI / PyAudioWPatch | Depende de permisos y del modo de acceso del dispositivo. |
 
 AuralWarden trabaja con transmisiones públicas y enlaces directos. No intenta eludir autenticación, DRM, restricciones geográficas ni condiciones de las plataformas.
+
+**Audio de aplicación** no requiere extensiones ni controladores nuevos para capturar. Usa la API nativa disponible en el equipo y falla de forma visible si no puede abrirla, sin sustituirla por el audio completo de Windows. Se comprobó en el Windows 10 del equipo de desarrollo, pero no se garantiza en todas las compilaciones. La aplicación puede estar minimizada para capturar solo audio; la grabación de vídeo requiere mantener la ventana sin minimizar.
+
+> [!IMPORTANT]
+> **La separación de audio entre ventanas o pestañas de una misma aplicación no está implementada.** Elegir una ventana de Chrome no aísla necesariamente su audio del de otras ventanas o pestañas del mismo navegador. Si se activa el vídeo, la imagen sí se limita a la ventana elegida. Para separar el audio, utiliza aplicaciones independientes; abrir otra ventana, otro perfil o el modo incógnito no garantiza el aislamiento.
+
+**Separar audio** es una función adicional y voluntaria: instala únicamente VB-CABLE estándar de 64 bits desde su fuente oficial, con paquete verificado, autorización de administrador y sin reiniciar automáticamente. El controlador permanece instalado. Durante el monitoreo envía la aplicación completa al cable, comprueba que su sesión de audio se haya trasladado y conserva la salida de las demás aplicaciones. No silencies esa aplicación en el mezclador: ese silencio puede eliminar también la señal capturada. La aplicación debe seguir reproduciendo audio y usar una salida que respete la preferencia de Windows; si no cambia, se solicita restauración y se informa el fallo.
+
+Una hotword, **Restaurar audio**, detener o cerrar AuralWarden solicita recuperar la salida anterior y deja la aplicación audible. Un auxiliar independiente intenta restaurarla también si AuralWarden falla. Si la aplicación vigilada se cerró antes o ignora el cambio, la recuperación queda visible y puede requerir abrirla, reproducir audio o elegir **Predeterminada** dentro de sus ajustes. No hay garantía para todos los programas ni compilaciones de Windows. En Chrome puede afectar a otras pestañas y ventanas, no solo a Meet.
 
 ## Qué se guarda
 
@@ -410,9 +433,11 @@ Para conservar todas las carpetas anteriores durante una validación, añade `-P
 
 ## Estado del proyecto
 
-### Versión 1.0.3
+### Versión 1.3.0 — Revisión de sesiones
 
-- [x] Fuentes web, archivos, audio de Windows, micrófono y ventanas locales.
+- [x] Fuentes web, archivos, audio de Windows, audio por aplicación, micrófono y ventanas locales.
+- [x] Separación opcional de audio mediante VB-CABLE, restauración por hotword y recuperación independiente ante cierres abruptos.
+- [x] Búsqueda en el texto abierto, marcadores locales y solicitud de clips manuales sin hotwords.
 - [x] Transcripción local, VAD, segunda pasada y hotwords entre fragmentos.
 - [x] Clips de audio/vídeo y grabación completa opcional.
 - [x] Subtítulos auxiliares de YouTube con reintento y renovación.
@@ -430,9 +455,9 @@ Para conservar todas las carpetas anteriores durante una validación, añade `-P
 - [x] Comprobar descargas reales de modelos y CUDA opcional en el equipo de desarrollo.
 - [x] Conservar las pruebas prolongadas realizadas con versiones candidatas del mismo núcleo.
 - [ ] Completar las fuentes correspondientes de bibliotecas nativas y preparar el ZIP público aprobado.
-- [ ] Crear el repositorio remoto, revisar el primer commit y habilitar el reporte privado de vulnerabilidades.
+- [ ] Completar la revisión de publicación y comprobar el reporte privado de vulnerabilidades en el repositorio existente.
 
-No está disponible un segundo computador para una comprobación independiente. Las pruebas prolongadas de versiones anteriores no sustituyen una nueva sesión con voz real después de este parche.
+No está disponible un segundo computador para una comprobación independiente. La separación de audio de 1.2.0 se comprobó mediante señal sintética y una prueba real breve con Chrome/Meet y Brave; las pruebas prolongadas de versiones anteriores no sustituyen una sesión prolongada con esta versión.
 
 Consulta el [roadmap](docs/ROADMAP.md) y el [historial de cambios](CHANGELOG.md).
 
@@ -487,7 +512,7 @@ Ruido, música, solapamiento, fragmentos breves y cambios de micrófono pueden s
 - [Contribuciones](CONTRIBUTING.md)
 - [Componentes y licencias de terceros](docs/THIRD_PARTY_NOTICES.md)
 - [Lista de verificación para publicaciones](docs/RELEASE_CHECKLIST.md)
-- [Notas de AuralWarden 1.0.3](docs/RELEASE_NOTES_1.0.3.md)
+- [Notas de AuralWarden 1.3.0](docs/RELEASE_NOTES_1.3.0.md)
 - [Guía de publicación inicial en GitHub](docs/GITHUB_PUBLISHING.md)
 - [Historial de versiones](CHANGELOG.md)
 
@@ -512,6 +537,8 @@ AuralWarden no está afiliado, patrocinado ni aprobado por YouTube, Twitch, Kick
 - [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) y [3D-Speaker](https://github.com/modelscope/3D-Speaker) — VAD, huellas y separación local de hablantes.
 - [whisper.cpp](https://github.com/ggml-org/whisper.cpp) — backend externo opcional para CPU/Vulkan.
 - [Qt for Python / PySide6](https://doc.qt.io/qtforpython-6/) y [QtAwesome](https://github.com/spyder-ide/qtawesome) — interfaz de escritorio.
+- [API de captura por aplicación de Microsoft](https://learn.microsoft.com/en-us/samples/microsoft/windows-classic-samples/applicationloopbackaudio-sample/) — referencia de activación WASAPI por árbol de procesos.
+- [VB-CABLE estándar de VB-Audio](https://vb-audio.com/Cable/) — controlador virtual opcional, descargado por separado; no se incluye ni se modifica su paquete original.
 
 ### Proyectos revisados como referencia conceptual
 
@@ -522,6 +549,7 @@ Estos proyectos se consultaron para comparar enfoques de streaming, diarización
 - [coloeso/whisperlivekit](https://github.com/coloeso/whisperlivekit)
 - [KoljaB/WhoSpeaksLive](https://github.com/KoljaB/WhoSpeaksLive)
 - [homelab-00/TranscriptionSuite](https://github.com/homelab-00/TranscriptionSuite)
+- [EarTrumpet](https://github.com/File-New-Project/EarTrumpet) — referencia de las interfaces internas de Windows para preferencias de salida por aplicación; la implementación Python de enrutamiento es propia.
 
 ---
 

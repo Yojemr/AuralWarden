@@ -1,5 +1,33 @@
 # Hoja de ruta
 
+## 1.4.0 — Instalación y actualizaciones (previsto)
+
+- Receta reutilizable para generar el instalador de Windows en futuras versiones.
+- Instalación y actualización conservando modelos, configuración, clips y transcripciones.
+- Componentes opcionales separados y preparación de la distribución binaria pública.
+
+## 1.3.0 — Revisión de sesiones
+
+- Búsqueda dentro de la transcripción abierta y navegación por coincidencias.
+- Marcadores con hora y nota, sin editar los originales.
+- Clips manuales sin hotwords, usando los intervalos configurados y el reloj de captura.
+- Migración de notas y pruebas de límites, concurrencia y continuidad de la detección automática.
+
+## 1.2.0 — Separación opcional de audio
+
+- VB-CABLE estándar opcional, preparado desde la aplicación con descarga verificada y sin productos adicionales.
+- Enrutamiento confirmado por la sesión real, restauración permanente por hotword y recuperación independiente ante fallos.
+- Conservación de preferencias originales, respeto de cambios externos y recuperación pendiente visible si la aplicación vigilada se cerró.
+- Prueba sintética completa y separación simultánea de Chrome/Meet y Brave comprobadas localmente, incluida restauración y confirmación auditiva del usuario.
+
+## 1.1.0 — Audio por aplicación
+
+- Selección explícita de una aplicación y captura nativa de su árbol de procesos.
+- Transcripción, hotwords y clips mediante el mismo motor existente; vídeo de la ventana opcional.
+- Identidad de proceso validada, auxiliar aislado, memoria acotada y sin cambio automático al audio general.
+- Captura real breve comprobada con Chrome/Meet en Windows 10 y aislamiento comprobado con fuentes sintéticas independientes.
+- El silencio del mezclador suprime la captura en el equipo probado; la separación mediante salida virtual se incorpora en 1.2.0.
+
 ## 1.0.3 — Vídeo de ventanas locales
 
 - Fuente integrada «Ventana + audio del PC», con selección explícita de una ventana.

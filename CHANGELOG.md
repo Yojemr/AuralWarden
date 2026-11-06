@@ -8,6 +8,82 @@ El proyecto utiliza versionado semántico: `MAJOR.MINOR.PATCH`.
 
 - Correcciones posteriores basadas en informes reproducibles de otros equipos.
 - Validación y empaquetado opcional de un componente `whisper.cpp` con Vulkan para hardware AMD e Intel.
+- Instalador reutilizable para Windows previsto para 1.4.0, con actualización que conserve los datos del usuario.
+
+## [1.3.0] - 2026-11-06
+
+### Added
+
+- Búsqueda literal en la transcripción abierta, sin distinguir mayúsculas, con Ctrl+F, contador, navegación circular y procesamiento acotado a 10.000 coincidencias.
+- Marcadores manuales con hora y nota, almacenados localmente en `bookmarks.json` sin modificar las transcripciones originales. Gestión desde Momentos y desde la biblioteca de transcripciones.
+- Solicitud de clips manuales desde el menú, la bandeja o Ctrl+Alt+C, utilizando los intervalos y tipos de evidencia configurados. No genera una hotword ni una notificación de detección.
+- Reloj de audio capturado independiente del avance de Whisper para ubicar marcadores y clips aunque la transcripción se retrase.
+- Cola acotada de ocho clips manuales en curso, preferencias fijadas al solicitarlos y aviso de cancelación si falla la captura antes de procesarlos.
+- Migración de marcadores entre carpetas portables; sus notas y referencias permanecen fuera del código publicado.
+
+### Distribution
+
+- Release `v1.3.0` de código fuente, sin instalador, ejecutable ni componentes binarios adjuntos. La preparación de fuentes correspondientes para una distribución binaria pública sigue pendiente.
+
+### Fixed
+
+- Enter y los botones de navegación actualizan inmediatamente una búsqueda recién cambiada, sin seleccionar resultados del término anterior durante la espera de actualización.
+- Los marcadores siguen asociados a la sesión cuando la carpeta `transcripts` cambia de mayúsculas o minúsculas.
+- Los tiempos nulos, booleanos o fuera del rango numérico se rechazan con un mensaje de validación, sin sobrescribir un archivo de notas existente ni dejar escapar errores de conversión.
+
+### Validation scope
+
+- Suite local de 285 pruebas aprobada, incluyendo continuidad de hotwords durante clips manuales, límites de solicitudes, conservación de originales y regresiones de búsqueda y marcadores.
+- Revisión visual con datos sintéticos de búsqueda, marcadores y actividad manual; sin capturar contenido de aplicaciones ni cambiar sus salidas de audio.
+- Queda pendiente una sesión prolongada de 1.3.0 y su validación en otro equipo.
+
+## [1.2.0] - 2026-11-05
+
+### Added
+
+- Separación voluntaria de audio por aplicación mediante VB-CABLE estándar: el proceso elegido puede seguir transcribiéndose sin reproducirse en los altavoces mientras las demás aplicaciones mantienen sus salidas.
+- Botón «Separar audio» en la fuente «Audio de aplicación», preparación del componente opcional y confirmación del alcance antes de cambiar la salida.
+- Descarga oficial de 1,29 MB con SHA-256 fijado y comprobación del instalador de 64 bits. No se instalan Voicemeeter ni otros productos; la autorización administrativa y el instalador permanecen bajo control del usuario, sin reinicio automático.
+- Diario de preferencias de salida por rol, identidad de proceso verificada, cambios comparados antes de restaurar y auxiliar independiente de recuperación. Una hotword restaura la salida y no vuelve a silenciarla.
+- Recuperación al detener, cerrar, fallar o detectar cambios externos; estado visible de restauración pendiente y reintento manual. Si se cerró la aplicación vigilada, puede requerirse abrirla y reproducir audio.
+- Conservación recuperable de los dispositivos predeterminados anteriores a instalar el cable. El controlador permanece instalado al cerrar AuralWarden.
+- Comprobación sintética de envío al cable, captura en RAM y restauración sin guardar audio de usuario ni cambiar las rutas de sus aplicaciones.
+
+### Reliability
+
+- Una preferencia escrita en Windows no se considera suficiente: se comprueba la salida real de la sesión antes de confirmar la separación. Si la aplicación ignora el cambio, se intenta restaurar.
+- La recuperación conserva su registro mientras el flujo siga en el cable, incluso si Windows ya confirmó la preferencia original.
+- Exclusión de auxiliares duplicados por ejecutable; un auxiliar nuevo no revierte ni sobrescribe la sesión de otro.
+- Se priorizan sesiones activas, se acota la espera del generador de diagnóstico y se tolera el reintento de una recuperación pendiente.
+
+### Validation scope
+
+- Flujo sintético verificado con captura y restauración, sin cambios en los dispositivos predeterminados.
+- Prueba real simultánea de 20 segundos con Chrome/Meet y Brave: Chrome enviado al cable y capturado en memoria, Brave permaneciendo en los altavoces y Chrome restaurado al terminar. Confirmación auditiva del usuario, preferencias de Brave y dispositivos predeterminados sin cambios. No se guardó contenido de la reunión ni de la serie.
+- Suite automatizada de 263 pruebas aprobada en el entorno local.
+- Recuperación independiente comprobada terminando abruptamente un propietario sintético: su salida se restauró sin intervenir aplicaciones reales.
+- Se mantienen las limitaciones de alcance por aplicación completa y de compatibilidad de las API internas de Windows.
+
+## [1.1.0] - 2026-10-21
+
+### Added
+
+- Fuente «Audio de aplicación» mediante WASAPI process loopback, seleccionando explícitamente una aplicación y sus procesos hijos. No requiere extensión, inyección de código ni un controlador nuevo.
+- Integración con la transcripción, diarización, hotwords, notificaciones, clips WAV y audio completo existentes, más vídeo opcional de la ventana con audio de esa aplicación.
+- Audio independiente de la minimización de la ventana; verificación de PID, fecha de creación y ejecutable, sin cambio automático de aplicación ni de fuente ante fallos.
+- Auxiliar nativo aislado y cancelable, cola de 16 bloques y remuestreo continuo a mono de 16 kHz sin deriva por redondeo de paquetes.
+
+### Fixed
+
+- Entorno virtual separado para las dependencias y las pruebas de GitHub Actions, evitando conflictos con herramientas preinstaladas del servidor.
+- Prueba de finalización MP4 condicionada a la presencia de FFmpeg y doble de prueba de interfaz con estado de motor completo.
+- Documentación actualizada con la diferencia entre audio general, ventana con mezcla general y captura por aplicación.
+
+### Validation scope
+
+- Captura breve de Chrome/Meet comprobada en Windows 10, sin guardar audio de la clase ni cambiar su volumen.
+- Aislamiento comprobado con dos fuentes sintéticas independientes y de volumen suave. La sesión silenciada dejó de ser capturable: el silencio selectivo queda expresamente pendiente y no se ofrece como capacidad operativa.
+- En Chrome el alcance es el árbol de procesos, no una sola pestaña; el vídeo conserva el alcance de la ventana elegida.
 
 ## [1.0.3] - 2026-10-14
 

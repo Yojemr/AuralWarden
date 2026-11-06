@@ -7,6 +7,8 @@ El proyecto utiliza versionado semántico: `MAJOR.MINOR.PATCH`.
 ### Changed
 
 - Actualizaciones seleccionadas de Streamlink, yt-dlp, certifi, charset-normalizer, idna y urllib3 para mantenimiento de captura web y conexiones HTTPS. Se conservan las versiones verificadas de Qt, CTranslate2 y los componentes CUDA en lugar de actualizar todo el grupo de dependencias simultáneamente.
+- Pycaw 20260927: mejoras de lectura de propiedades de dispositivos y correcciones de interfaces COM. Enumeración y lectura de volumen comprobadas sin modificar salidas, volumen ni silencio.
+- Actualizaciones de las acciones oficiales de preparación de Python y CodeQL, conservando los permisos mínimos y la instalación de pruebas en un entorno aislado.
 
 ### Planned
 

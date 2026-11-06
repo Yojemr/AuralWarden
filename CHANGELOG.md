@@ -4,6 +4,10 @@ El proyecto utiliza versionado semántico: `MAJOR.MINOR.PATCH`.
 
 ## [Unreleased]
 
+### Changed
+
+- Actualizaciones seleccionadas de Streamlink, yt-dlp, certifi, charset-normalizer, idna y urllib3 para mantenimiento de captura web y conexiones HTTPS. Se conservan las versiones verificadas de Qt, CTranslate2 y los componentes CUDA en lugar de actualizar todo el grupo de dependencias simultáneamente.
+
 ### Planned
 
 - Correcciones posteriores basadas en informes reproducibles de otros equipos.

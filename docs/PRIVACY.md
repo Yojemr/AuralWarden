@@ -8,6 +8,12 @@ Para mostrar el nombre de un directo público de YouTube, la interfaz consulta e
 
 Los enlaces públicos de Twitch y Kick se resuelven mediante Streamlink sin integrar chat, cuentas o credenciales. Las fuentes locales de micrófono y audio del sistema no se envían por Internet.
 
+## Revisión audiovisual local
+
+El reproductor abre solo archivos seleccionados o grabaciones completas reconocidas dentro de una sesión terminada. No se siguen enlaces de vídeo incluidos en el JSON de una transcripción. La reproducción empieza silenciada y los protocolos de red anidados no se habilitan para el reproductor ni para la exportación. No se cambia el volumen o la salida de otras aplicaciones.
+
+Los índices `<archivo>.timeline.json` contienen únicamente tramos temporales y tamaño/fecha de modificación del archivo asociado, sin audio, texto ni direcciones de servicios. El desfase manual permanece en la ventana de revisión. Exportar un clip genera un archivo nuevo, elimina los metadatos descriptivos heredados y no modifica los originales. Sus archivos temporales se mantienen junto al destino y se retiran al finalizar o cancelar.
+
 ## Fuentes de Windows
 
 El modo **Audio del sistema** recibe la mezcla completa del dispositivo seleccionado. Puede incluir sonidos de otras aplicaciones además de la fuente que motivó la sesión. La interfaz lo identifica expresamente y la captura solo comienza al pulsar **Iniciar monitoreo**.
@@ -25,6 +31,8 @@ La monitorización silenciosa modifica temporalmente el silencio del dispositivo
 El modo **Micrófono** puede captar conversaciones cercanas. Debe usarse únicamente con las autorizaciones y avisos aplicables. La grabación completa continúa desactivada por defecto y los clips conservan solo los intervalos configurados.
 
 ## Transcripción
+
+La edición instalada conserva sus datos fuera del directorio del programa. La selección voluntaria de otra carpeta solo escribe una referencia local; no copia ni envía contenido. El gestor de almacenamiento analiza únicamente la raíz elegida y permite enviar archivos personales seleccionados a la Papelera con confirmación. No elimina automáticamente datos ni vacía la Papelera. El temporizador permanece solo en memoria y no programa tareas del sistema operativo.
 
 Los marcadores son voluntarios y se guardan en `data/bookmarks.json` con hora, nota, fecha y ruta local de la sesión o archivo. No se escriben anotaciones dentro de los originales ni se envían a servicios externos. Los clips manuales son solicitudes explícitas del usuario y conservan únicamente el intervalo configurado, como los clips automáticos; no se presentan como detecciones de voz.
 
@@ -64,7 +72,7 @@ Un enlace firmado de radio, HLS u otra plataforma puede contener credenciales te
 
 El control local está desactivado por defecto. Al habilitarlo se crea `local-control.json`, que contiene una credencial aleatoria propia de AuralWarden y no una clave de OpenAI, Telegram ni otro servicio. La comunicación usa el mecanismo local de instancia única de Windows y no abre un puerto de red.
 
-Las órdenes posibles se limitan a consultar capacidades y estado, insertar un enlace HTTP/HTTPS, reemplazar hotwords, iniciar o detener, restaurar la ventana y leer hasta 200 fragmentos o alertas recientes. No existe una orden para ejecutar programas, explorar rutas, leer configuraciones o recuperar credenciales. Las alertas devueltas indican si hay clips pero omiten sus rutas.
+El control local permite consultar estado, fragmentos y alertas, elegir fuentes, ajustar opciones de sesión, iniciar y detener, solicitar clips y guardar transcripciones en la carpeta de AuralWarden. La consulta de ventanas requiere indicar una aplicación y devuelve su nombre, títulos y un identificador temporal. Separar el audio requiere una orden autenticada y una confirmación explícita para la aplicación monitoreada. Los resultados de alertas omiten rutas de archivos. El [catálogo de órdenes](AGENT_CONTROL.md) especifica los campos disponibles.
 
 `local-control-audit.json` conserva hasta 500 resultados con hora, acción y código. No registra argumentos, enlaces, hotwords, transcripción ni credenciales. Al desactivar el control se elimina la credencial; el historial de auditoría permanece local para diagnóstico.
 

@@ -17,6 +17,7 @@ from auralwarden.model_installer import DownloadCancelled, install_whisper_model
 from auralwarden.models import AppSettings
 from auralwarden.paths import data_dir, runtime_executable
 from auralwarden.optional_cuda import install_optional_cuda
+from auralwarden.ui.typography import justify_label
 
 
 class SetupWorker(QThread):
@@ -86,10 +87,10 @@ class ModelSetupDialog(QDialog):
         layout = QVBoxLayout(self)
         intro = QLabel("El reconocimiento funciona en tu PC. Elige un modelo; solo se descargará al pulsar Preparar. "
                        "No necesitas cuentas ni claves de API. Los modelos existentes se reutilizan.")
-        intro.setWordWrap(True)
+        justify_label(intro)
         layout.addWidget(intro)
         self.hardware = QLabel("Analizando el equipo…" if analyze else "Selecciona un modelo local.")
-        self.hardware.setWordWrap(True)
+        justify_label(self.hardware)
         layout.addWidget(self.hardware)
         self.model = QComboBox()
         for name, info in model_manifest().items():
@@ -105,7 +106,7 @@ class ModelSetupDialog(QDialog):
                              f"FFmpeg: {'incluido / disponible' if runtime_executable('ffmpeg') else 'no disponible; usa el paquete portable completo'}\n"
                              "Modelos Whisper: repositorios verificados de Hugging Face; hablantes: sherpa-onnx / pyannote / 3D-Speaker. "
                              "Ver docs/THIRD_PARTY_NOTICES.md. La descarga comparte tu IP con esos proveedores.")
-        destination.setWordWrap(True)
+        justify_label(destination)
         layout.addWidget(destination)
         self.cuda_button = QPushButton("Preparar CUDA opcional (solo NVIDIA)")
         self.cuda_button.setToolTip("Descarga separada de ≈ 546 MiB; requiere GPU/controlador NVIDIA compatibles y aceptación de sus condiciones. CPU no necesita esto.")
@@ -119,7 +120,7 @@ class ModelSetupDialog(QDialog):
         self.progress.setRange(0, 100)
         layout.addWidget(self.progress)
         self.status = QLabel("Puedes posponer este paso y volver desde Preferencias → Modelos.")
-        self.status.setWordWrap(True)
+        justify_label(self.status)
         layout.addWidget(self.status)
         buttons = QHBoxLayout()
         self.prepare = QPushButton("Preparar")

@@ -15,13 +15,13 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QLayout,
     QMessageBox,
     QPushButton,
     QScrollArea,
     QSizePolicy,
     QSpinBox,
     QTabWidget,
-    QTextEdit,
     QVBoxLayout,
     QWidget,
 )
@@ -37,6 +37,7 @@ from auralwarden.model_catalog import (
 )
 from auralwarden.ui.widgets import aw_icon, speaker_color
 from auralwarden.ui.setup_dialog import ModelSetupDialog
+from auralwarden.ui.typography import ParagraphTextEdit, justify_label
 
 
 class PreferencesDialog(QDialog):
@@ -74,7 +75,7 @@ class PreferencesDialog(QDialog):
         self.install_models.clicked.connect(self._install_models)
         recognition_form.addRow("Preparación", self.install_models)
         self.model_status = QLabel()
-        self.model_status.setWordWrap(True)
+        justify_label(self.model_status)
         self.model_status.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         recognition_form.addRow("Estado", self.model_status)
         self._models: list[LocalWhisperModel] = []
@@ -122,10 +123,7 @@ class PreferencesDialog(QDialog):
         hardware_row.setContentsMargins(0, 0, 0, 0)
         hardware_row.setAlignment(Qt.AlignmentFlag.AlignTop)
         self.hardware_status = QLabel("Pulsa Analizar para ver la configuración recomendada.")
-        self.hardware_status.setWordWrap(True)
-        self.hardware_status.setAlignment(
-            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop
-        )
+        justify_label(self.hardware_status)
         self.hardware_status.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.MinimumExpanding
         )
@@ -158,14 +156,14 @@ class PreferencesDialog(QDialog):
         self.low_confidence.setSingleStep(0.01)
         self.low_confidence.setValue(settings.low_confidence_second_pass_threshold)
         recognition_form.addRow("Segunda pasada bajo", self.low_confidence)
-        self.context = QTextEdit(settings.recognition_context)
+        self.context = ParagraphTextEdit(settings.recognition_context)
         self.context.setMaximumHeight(80)
         self.context.setPlaceholderText("Tema, canal, nombres o contexto probable")
         recognition_form.addRow("Contexto", self.context)
         self.vocabulary = QLineEdit(", ".join(settings.vocabulary))
         self.vocabulary.setPlaceholderText("Nombres y términos, separados por comas")
         recognition_form.addRow("Vocabulario", self.vocabulary)
-        tabs.addTab(recognition, "Reconocimiento")
+        tabs.addTab(self._scrollable_tab(recognition), "Reconocimiento")
 
         behavior = QWidget()
         behavior_form = QFormLayout(behavior)
@@ -239,7 +237,7 @@ class PreferencesDialog(QDialog):
         self.reconnect_max_delay.setSuffix(" s")
         self.reconnect_max_delay.setValue(settings.reconnect_max_delay_seconds)
         behavior_form.addRow("Espera máxima", self.reconnect_max_delay)
-        tabs.addTab(behavior, "Comportamiento")
+        tabs.addTab(self._scrollable_tab(behavior), "Comportamiento")
 
         advanced = QWidget()
         advanced_form = QFormLayout(advanced)
@@ -302,7 +300,7 @@ class PreferencesDialog(QDialog):
         )
         self.whisper_cpp_acceleration.setCurrentIndex(max(0, cpp_acceleration_index))
         advanced_form.addRow("Aceleración whisper.cpp", self.whisper_cpp_acceleration)
-        tabs.addTab(advanced, "Avanzado")
+        tabs.addTab(self._scrollable_tab(advanced), "Avanzado")
 
         tooltips = {
             self.model: (
@@ -418,6 +416,15 @@ class PreferencesDialog(QDialog):
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
+
+    @staticmethod
+    def _scrollable_tab(content: QWidget) -> QScrollArea:
+        content.layout().setSizeConstraint(QLayout.SizeConstraint.SetMinimumSize)
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QScrollArea.Shape.NoFrame)
+        scroll.setWidget(content)
+        return scroll
 
     def _browse_model(self) -> None:
         selected = QFileDialog.getExistingDirectory(self, "Carpeta del modelo Whisper")
@@ -642,7 +649,7 @@ class SpeakerNamesDialog(QDialog):
             "una voz para identificarla en sesiones futuras; AuralWarden guarda una huella "
             "numérica local, no la grabación de audio."
         )
-        description.setWordWrap(True)
+        justify_label(description)
         description.setProperty("muted", True)
         layout.addWidget(description)
         scroll = QScrollArea()
@@ -686,6 +693,7 @@ class SpeakerNamesDialog(QDialog):
             saved_note = QLabel(
                 "Marca Eliminar únicamente si ya no quieres conservar esa huella de voz."
             )
+            justify_label(saved_note)
             saved_note.setProperty("muted", True)
             layout.addWidget(saved_note)
             for profile in saved_profiles:

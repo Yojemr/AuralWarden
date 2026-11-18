@@ -8,8 +8,8 @@
   </p>
 
   <p>
-    <img alt="Versión" src="https://img.shields.io/badge/versi%C3%B3n-1.3.0-00C8D7?style=flat-square">
-    <img alt="Estado" src="https://img.shields.io/badge/distribuci%C3%B3n-c%C3%B3digo%20fuente-22C55E?style=flat-square">
+    <img alt="Versión" src="https://img.shields.io/badge/versi%C3%B3n-1.6.0-00C8D7?style=flat-square">
+    <img alt="Estado" src="https://img.shields.io/badge/estado-validaci%C3%B3n%20local-22C55E?style=flat-square">
     <img alt="Windows" src="https://img.shields.io/badge/Windows-10%20%7C%2011-0078D4?style=flat-square&logo=windows11&logoColor=white">
     <img alt="Python" src="https://img.shields.io/badge/Python-3.12-3776AB?style=flat-square&logo=python&logoColor=white">
     <img alt="Procesamiento local" src="https://img.shields.io/badge/STT-local-18A999?style=flat-square">
@@ -28,7 +28,7 @@
 </div>
 
 > [!IMPORTANT]
-> **AuralWarden 1.3.0 añade búsqueda en transcripciones, marcadores y clips manuales.** Conserva la separación de audio mediante VB-CABLE y la restauración por hotword de 1.2.0. La [Release 1.3.0 contiene solo código fuente](https://github.com/Yojemr/AuralWarden/releases/tag/v1.3.0), sin instalador ni ejecutable adjunto. Antes de publicar binarios resta completar la correspondencia de fuentes de sus bibliotecas nativas. El portable CPU y los componentes opcionales se validan por separado. Las compilaciones iniciales no están firmadas digitalmente: obtén los archivos únicamente del perfil oficial de [Yojemr](https://github.com/Yojemr).
+> **AuralWarden 1.6.0 amplía el control local.** Permite seleccionar una fuente de Windows, separar y restaurar el audio de la aplicación monitoreada, programar la detención, crear clips y guardar transcripciones desde herramientas locales. Las compilaciones locales no están firmadas digitalmente.
 
 ![Interfaz principal de AuralWarden](docs/assets/auralwarden-dashboard.png)
 
@@ -69,10 +69,16 @@ Su objetivo no es obligar a grabarlo todo. Por defecto mantiene una transcripci�
 
 ## Inicio rápido
 
+### Instalador generado localmente
+
+El instalador por usuario prepara el programa y sus accesos sin privilegios de administrador. Los datos se conservan separados de los archivos del programa al actualizar y desinstalar. Consulta [Instalación y actualización](docs/INSTALLATION.md) para compilar el instalador o reutilizar una carpeta de datos portable.
+
+**Menú > Temporizador de detención** permite terminar el monitoreo por duración o fecha/hora, también desde la bandeja. No apaga Windows ni inicia una grabación automáticamente. **Menú > Almacenamiento** muestra tamaños y espacio libre y permite enviar clips, grabaciones o transcripciones seleccionados a la Papelera; configuración, modelos, componentes y recuperación permanecen protegidos. No hay borrado automático.
+
 ### Usar la carpeta portable
 
 > [!NOTE]
-> La publicación 1.3.0 en GitHub incluye únicamente el código fuente. El portable público queda pendiente de completar la preparación de fuentes correspondientes de sus bibliotecas nativas. Mientras tanto, utiliza las instrucciones de ejecución desde código fuente; no hay un ejecutable adjunto a esta publicación. Los pasos siguientes se aplican a una carpeta portable compilada localmente o a una futura distribución binaria.
+> La publicación 1.6.0 en GitHub distribuye el código fuente. Para usar la aplicación, sigue las instrucciones de ejecución desde código fuente o genera la carpeta portable en Windows.
 
 La carpeta portable está diseñada para funcionar sin instalar Python:
 
@@ -433,7 +439,19 @@ Para conservar todas las carpetas anteriores durante una validación, añade `-P
 
 ## Estado del proyecto
 
-### Versión 1.3.0 — Revisión de sesiones
+### Versión 1.6.0 — Control local ampliado
+
+Selección de fuentes de Windows, separación de audio por aplicación y control de grabaciones, clips, diarización y temporizador. Consulta la [referencia del control local](docs/AGENT_CONTROL.md).
+
+### Versión 1.5.0 — Revisión audiovisual
+
+- [x] Reproductor local bajo demanda en Transcripciones, saltos por frase o tiempo y exportación MP4/WAV cancelable sin sobrescribir originales.
+- [x] Índices temporales para nuevas grabaciones completas y clips exportados; desfase manual para archivos antiguos e intervalos sin grabación detectados.
+
+- [x] Párrafos justificados en las secciones de lectura y ayuda, con «Acerca de» redimensionable y rutas completas.
+
+- [x] Receta reutilizable de instalador por usuario, datos separados y bloqueo de actualización mientras la edición instalada está abierta.
+- [x] Temporizador de detención, almacenamiento y reutilización voluntaria de una carpeta de datos anterior.
 
 - [x] Fuentes web, archivos, audio de Windows, audio por aplicación, micrófono y ventanas locales.
 - [x] Separación opcional de audio mediante VB-CABLE, restauración por hotword y recuperación independiente ante cierres abruptos.
@@ -449,15 +467,9 @@ Para conservar todas las carpetas anteriores durante una validación, añade `-P
 - [x] Pruebas automatizadas del núcleo y de la captura de ventanas; revisión independiente previa de las correcciones sensibles de 1.0.2.
 - [x] Pruebas de GitHub Actions, CodeQL, Dependabot y plantillas de colaboración preparados.
 
-### Validación de la versión pública
+### Alcance de las pruebas de la versión
 
-- [x] Probar el portable desde una extracción nueva y aislada en Windows.
-- [x] Comprobar descargas reales de modelos y CUDA opcional en el equipo de desarrollo.
-- [x] Conservar las pruebas prolongadas realizadas con versiones candidatas del mismo núcleo.
-- [ ] Completar las fuentes correspondientes de bibliotecas nativas y preparar el ZIP público aprobado.
-- [ ] Completar la revisión de publicación y comprobar el reporte privado de vulnerabilidades en el repositorio existente.
-
-No está disponible un segundo computador para una comprobación independiente. La separación de audio de 1.2.0 se comprobó mediante señal sintética y una prueba real breve con Chrome/Meet y Brave; las pruebas prolongadas de versiones anteriores no sustituyen una sesión prolongada con esta versión.
+En Windows, la versión 1.6.0 se comprobó con una sesión sintética desde el cliente local y una prueba de enrutamiento real de una señal generada hacia VB-CABLE. La prueba verificó la captura de la señal, la restauración de la salida y la conservación de los dispositivos predeterminados.
 
 Consulta el [roadmap](docs/ROADMAP.md) y el [historial de cambios](CHANGELOG.md).
 
@@ -502,6 +514,7 @@ Ruido, música, solapamiento, fragmentos breves y cambios de micrófono pueden s
 ## Documentación
 
 - [Primer inicio y actualización](docs/FIRST_RUN.md)
+- [Instalación y conservación de datos](docs/INSTALLATION.md)
 - [Uso completo de la interfaz](docs/GUI.md)
 - [Arquitectura](docs/ARCHITECTURE.md)
 - [Backend y eventos](docs/BACKEND.md)
@@ -513,6 +526,10 @@ Ruido, música, solapamiento, fragmentos breves y cambios de micrófono pueden s
 - [Componentes y licencias de terceros](docs/THIRD_PARTY_NOTICES.md)
 - [Lista de verificación para publicaciones](docs/RELEASE_CHECKLIST.md)
 - [Notas de AuralWarden 1.3.0](docs/RELEASE_NOTES_1.3.0.md)
+- [Notas de AuralWarden 1.4.0](docs/RELEASE_NOTES_1.4.0.md)
+- [Notas de AuralWarden 1.4.1](docs/RELEASE_NOTES_1.4.1.md)
+- [Notas de AuralWarden 1.5.0](docs/RELEASE_NOTES_1.5.0.md)
+- [Notas de AuralWarden 1.6.0](docs/RELEASE_NOTES_1.6.0.md)
 - [Guía de publicación inicial en GitHub](docs/GITHUB_PUBLISHING.md)
 - [Historial de versiones](CHANGELOG.md)
 

@@ -32,6 +32,8 @@ function Assert-NativeSuccess([string]$Step) {
 
 & $venvPython -c "import PyInstaller, auralwarden"
 Assert-NativeSuccess "Builder import"
+& $venvPython (Join-Path $PSScriptRoot "check-agent-skill.py")
+Assert-NativeSuccess "Agent skill compatibility"
 if ($WithCapture) {
     & $venvPython -c "import streamlink, yt_dlp, pyaudiowpatch, pycaw, comtypes, windows_capture, av"
     Assert-NativeSuccess "Capture imports"
@@ -228,6 +230,7 @@ if ($WithUi) {
         "FIRST_RUN.md",
         "GITHUB_PUBLISHING.md",
         "GUI.md",
+        "INSTALLATION.md",
         "HARDWARE.md",
         "PRIVACY.md",
         "RELEASE_CHECKLIST.md",
@@ -239,8 +242,12 @@ if ($WithUi) {
     )) {
         Copy-Item (Join-Path $projectRoot "docs\$publicDoc") $packageDocs -Force
     }
+    if ($version -ne "1.5.0") {
+        Copy-Item (Join-Path $projectRoot "docs\RELEASE_NOTES_1.5.0.md") $packageDocs -Force
+    }
     Copy-Item (Join-Path $projectRoot "docs\assets") $packageDocs -Recurse -Force
     Copy-Item (Join-Path $projectRoot "scripts\AuralWarden-Control.ps1") $packageRoot -Force
+    Copy-Item (Join-Path $projectRoot "integrations\codex\auralwarden") (Join-Path $packageRoot "agent-skill") -Recurse -Force
 }
 
 # Preserve notices from every bundled Python distribution. This inventory is

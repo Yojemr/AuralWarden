@@ -26,7 +26,13 @@ $requiredFiles = @(
     "requirements-build.lock.txt",
     "docs\GITHUB_PUBLISHING.md",
     "docs\RELEASE_CHECKLIST.md",
-    "docs\RELEASE_NOTES_1.3.0.md",
+    "docs\RELEASE_NOTES_1.4.0.md",
+    "docs\RELEASE_NOTES_1.4.1.md",
+    "docs\RELEASE_NOTES_1.5.0.md",
+    "docs\RELEASE_NOTES_1.6.0.md",
+    "docs\INSTALLATION.md",
+    "installer\AuralWarden.iss",
+    "scripts\build-installer.ps1",
     ".github\CODEOWNERS",
     ".github\dependabot.yml",
     ".github\release.yml",
@@ -68,7 +74,7 @@ try {
 
 $forbiddenRoots = '^(?:data|outputs|Archivo|work|\.venv|clips|recordings|transcripts|models|logs|cache)/'
 $textExtensions = @(
-    ".cfg", ".ini", ".json", ".md", ".ps1", ".py", ".toml", ".txt",
+    ".cfg", ".ini", ".iss", ".json", ".md", ".ps1", ".py", ".toml", ".txt",
     ".yaml", ".yml"
 )
 $textNamesWithoutExtension = @(

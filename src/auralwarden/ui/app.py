@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import atexit
 import hmac
 import json
 import os
@@ -16,11 +17,13 @@ from PySide6.QtGui import QFont, QFontDatabase, QIcon
 from PySide6.QtNetwork import QLocalServer, QLocalSocket
 from PySide6.QtWidgets import QApplication
 
-from auralwarden.paths import application_root, data_dir
+from auralwarden.paths import application_root, data_dir, portable_mode
+from auralwarden.install_guard import InstalledAppGuard
 from auralwarden.local_control import TRANSPORT_PROTOCOL_VERSION, transport_proof
 from auralwarden.ui.assets import asset_path
 from auralwarden.ui.main_window import MainWindow
 from auralwarden.ui.styles import APP_STYLESHEET
+from auralwarden.ui.typography import install_message_typography, remove_message_typography
 
 
 def configure_application_identity(app: QApplication) -> None:
@@ -332,8 +335,18 @@ def run_app(
     instance_guard = SingleInstanceGuard(instance_name)
     if not instance_guard.claim():
         return 0
-    window = MainWindow(demo=demo)
+    install_guard = InstalledAppGuard()
+    try:
+        if getattr(sys, "frozen", False) and not portable_mode() and not demo:
+            install_guard.claim()
+            atexit.register(install_guard.close)
+        window = MainWindow(demo=demo)
+    except Exception:
+        install_guard.close()
+        instance_guard.close()
+        raise
     instance_guard.bind(window)
+    install_message_typography(app)
     window.show()
     if screenshot is not None:
         destination = screenshot.expanduser().resolve()
@@ -352,4 +365,5 @@ def run_app(
     try:
         return int(app.exec())
     finally:
+        remove_message_typography(app)
         instance_guard.close()

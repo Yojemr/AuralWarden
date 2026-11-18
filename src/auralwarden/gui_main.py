@@ -26,6 +26,18 @@ def _run_self_check(destination: Path | None) -> int:
     modules = (
         "auralwarden.components",
         "auralwarden.bookmarks",
+        "auralwarden.stop_timer",
+        "auralwarden.storage",
+        "auralwarden.install_guard",
+        "auralwarden.ui.maintenance_dialogs",
+        "auralwarden.ui.about_dialog",
+        "auralwarden.ui.typography",
+        "auralwarden.media_review",
+        "auralwarden.transcript_review",
+        "auralwarden.ui.media_review",
+        "PySide6.QtMultimedia",
+        "PySide6.QtMultimediaWidgets",
+        "av",
         "auralwarden.ui.moments_dialog",
         "auralwarden.hardware",
         "auralwarden.transcribers.whisper_cpp",
@@ -151,6 +163,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--screenshot", type=Path)
     parser.add_argument("--screenshot-delay-ms", type=int, default=12_000)
     parser.add_argument("--self-check", action="store_true", help=argparse.SUPPRESS)
+    parser.add_argument("--self-check-media", type=Path, help=argparse.SUPPRESS)
     parser.add_argument("--self-check-window", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--self-check-process-window", type=int, help=argparse.SUPPRESS)
     parser.add_argument("--audio-route-guard", type=Path, help=argparse.SUPPRESS)
@@ -175,6 +188,9 @@ def main(argv: list[str] | None = None) -> int:
             return int(record_window(["--hwnd", str(args.record_window)]))
         if args.self_check:
             return _run_self_check(args.self_check_output)
+        if args.self_check_media is not None:
+            from auralwarden.media_review_check import run_media_review_check
+            return run_media_review_check(args.self_check_media, args.self_check_output)
         if args.self_check_window:
             from auralwarden.window_capture_check import run_window_capture_check
             return run_window_capture_check(args.self_check_output)

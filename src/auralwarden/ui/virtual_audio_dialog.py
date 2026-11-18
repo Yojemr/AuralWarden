@@ -6,6 +6,7 @@ from PySide6.QtCore import QThread, Signal, QTimer, Qt
 from PySide6.QtWidgets import QDialog, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QMessageBox
 
 from auralwarden.audio_routing import list_virtual_outputs
+from auralwarden.ui.typography import justify_label
 from auralwarden.virtual_audio_install import (
     prepare_vb_cable, launch_vb_cable_installer, snapshot_audio_defaults,
     save_install_defaults, recover_install_defaults,
@@ -45,11 +46,11 @@ class VirtualAudioDialog(QDialog):
             "AuralWarden no reinicia el equipo. El controlador permanece instalado al cerrar la aplicación."
         )
         intro.setTextFormat(Qt.TextFormat.PlainText)
-        intro.setWordWrap(True)
+        justify_label(intro)
         layout.addWidget(intro)
         self.status = QLabel()
         self.status.setTextFormat(Qt.TextFormat.PlainText)
-        self.status.setWordWrap(True)
+        justify_label(self.status)
         layout.addWidget(self.status)
         buttons = QHBoxLayout()
         self.install_button = QPushButton("Descargar y abrir instalador")

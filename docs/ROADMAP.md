@@ -1,10 +1,34 @@
 # Hoja de ruta
 
-## 1.4.0 — Instalación y actualizaciones (previsto)
+## 1.6.0 — Control local ampliado
+
+- Selección de ventanas y dispositivos mediante el protocolo local.
+- Separación y restauración de audio de la aplicación monitoreada con VB-CABLE.
+- Configuración de sesión, temporizador, clips manuales y exportación de transcripciones.
+
+## 1.5.0 — Revisión audiovisual (candidata local)
+
+- Reproductor local bajo demanda en la biblioteca, con saltos desde fragmentos y por tiempo.
+- Resaltado temporal, desplazamiento manual y conservación de búsqueda y selección.
+- Índices temporales para nuevas grabaciones completas, con detección de intervalos sin grabación y ajuste manual para archivos antiguos.
+- Exportación MP4/WAV cancelable sin sobrescribir originales, con recursos de codificación acotados.
+- Entrega portable; la preparación del instalador 1.4.1 no forma parte de esta etapa.
+
+## 1.4.1 — Presentación del texto (parche local)
+
+- Párrafos justificados en todas las secciones de lectura y ayuda.
+- «Acerca de» redimensionable y rutas completas con acceso a los avisos de terceros.
+- Sin cambios en el motor de reconocimiento ni en la captura.
+
+## 1.4.0 — Instalación y actualizaciones (candidata local)
 
 - Receta reutilizable para generar el instalador de Windows en futuras versiones.
 - Instalación y actualización conservando modelos, configuración, clips y transcripciones.
 - Componentes opcionales separados y preparación de la distribución binaria pública.
+- Temporizador de detención por duración o fecha/hora, sin apagado del equipo.
+- Inventario de almacenamiento y eliminación manual recuperable con datos protegidos.
+- Reutilización de datos de una carpeta anterior sin duplicación.
+- Pendientes para publicar: correspondencia de fuentes nativas y validación prolongada de la candidata.
 
 ## 1.3.0 — Revisión de sesiones
 

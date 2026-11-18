@@ -9,6 +9,8 @@ Esta lista se completa antes de crear una versión pública de AuralWarden. Las 
 - [ ] `VERSION`, `pyproject.toml`, `auralwarden.__version__` y la interfaz muestran la misma versión.
 - [ ] `CHANGELOG.md` describe los cambios y no contiene información privada.
 - [ ] La documentación, capturas y enlaces corresponden a la versión publicada.
+- [ ] `scripts/check-agent-skill.py` aprueba: versión, protocolos, órdenes/límites y CLI coinciden con la skill mantenida.
+- [ ] La skill documenta las funciones nuevas y sus vías de acceso reales; sus ayudantes se probaron con datos aislados y se sincronizó la copia global autorizada del desarrollador.
 - [ ] Las licencias y avisos de terceros están actualizados.
 - [ ] Se incluyen fuentes correspondientes, avisos y recetas aplicables a las bibliotecas nativas exactas redistribuidas; no basta con el inventario de ruedas Python.
 

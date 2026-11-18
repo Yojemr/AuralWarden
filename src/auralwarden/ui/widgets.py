@@ -31,6 +31,7 @@ from PySide6.QtWidgets import (
 from auralwarden.models import Hotword
 from auralwarden.transcript import can_extend_paragraph
 from auralwarden.ui.assets import asset_path
+from auralwarden.ui.typography import justify_label
 
 
 _ICON_FONT: qta.IconicFont | None = None
@@ -423,10 +424,7 @@ class CaptionPreviewPanel(QFrame):
             "Los últimos subtítulos aparecerán aquí sin mezclarse con Whisper."
         )
         self.text_label.setTextFormat(Qt.TextFormat.PlainText)
-        self.text_label.setWordWrap(True)
-        self.text_label.setAlignment(
-            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop
-        )
+        justify_label(self.text_label)
         self.text_label.setProperty("muted", True)
         self.text_label.setTextInteractionFlags(
             Qt.TextInteractionFlag.TextSelectableByMouse
@@ -542,7 +540,7 @@ class TranscriptRow(QFrame):
         )
         self.text_label = QLabel()
         self.text_label.setTextFormat(Qt.TextFormat.RichText)
-        self.text_label.setWordWrap(True)
+        justify_label(self.text_label)
         self.text_label.setTextInteractionFlags(
             Qt.TextInteractionFlag.TextSelectableByMouse
             | Qt.TextInteractionFlag.LinksAccessibleByMouse
@@ -629,7 +627,7 @@ class TranscriptRow(QFrame):
                 f'<a href="awtime:{index}" title="{tooltip}" '
                 f'style="color:#e7eef2;text-decoration:none;">{text}</a>'
             )
-        self.text_label.setText(" ".join(fragments))
+        self.text_label.setText('<p align="justify" style="margin:0;">' + " ".join(fragments) + '</p>')
         if self._hotwords:
             self.setStyleSheet(
                 "QFrame#transcriptParagraph {background:#11382f;"
@@ -978,7 +976,7 @@ class HotwordEditor(QFrame):
             "Elegir un perfil de voz activa la separación de hablantes."
         )
         note.setProperty("muted", True)
-        note.setWordWrap(True)
+        justify_label(note)
         layout.addWidget(note)
 
     def set_hotwords(self, hotwords: list[Hotword]) -> None:

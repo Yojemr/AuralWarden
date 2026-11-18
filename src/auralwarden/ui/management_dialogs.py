@@ -23,9 +23,9 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QPushButton,
     QSplitter,
+    QScrollArea,
     QTableWidget,
     QTableWidgetItem,
-    QTextEdit,
     QVBoxLayout,
     QWidget,
 )
@@ -41,6 +41,10 @@ from auralwarden.transcript_archive import (
 from auralwarden.ui.widgets import aw_icon
 from auralwarden.bookmarks import BookmarkStore
 from auralwarden.ui.moments_dialog import MomentsDialog
+from auralwarden.ui.typography import ParagraphTextEdit, justify_label
+from auralwarden.ui.media_review import MediaReviewPanel, ReviewTranscriptEdit
+from auralwarden.media_review import discover_session_media
+from auralwarden.transcript_review import review_text, text_spans
 
 
 class PresetDialog(QDialog):
@@ -60,7 +64,7 @@ class PresetDialog(QDialog):
         description = QLabel(
             "Los presets incluidos cambian el equilibrio de reconocimiento. Puedes guardar tus propias hotwords y opciones sin almacenar el enlace ni el dispositivo de audio."
         )
-        description.setWordWrap(True)
+        justify_label(description)
         description.setProperty("muted", True)
         layout.addWidget(description)
         self.list_widget = QListWidget()
@@ -68,7 +72,7 @@ class PresetDialog(QDialog):
         self.list_widget.itemDoubleClicked.connect(lambda _item: self._apply())
         layout.addWidget(self.list_widget, 1)
         self.detail = QLabel()
-        self.detail.setWordWrap(True)
+        justify_label(self.detail)
         self.detail.setProperty("muted", True)
         layout.addWidget(self.detail)
         actions = QHBoxLayout()
@@ -199,7 +203,7 @@ class AlertHistoryDialog(QDialog):
         self.table.itemSelectionChanged.connect(self._selection_changed)
         self.table.cellDoubleClicked.connect(lambda _row, _column: self._open_evidence())
         layout.addWidget(self.table, 1)
-        self.context = QTextEdit()
+        self.context = ParagraphTextEdit()
         self.context.setReadOnly(True)
         self.context.setMaximumHeight(95)
         self.context.setPlaceholderText("Selecciona una alerta para leer su contexto.")
@@ -370,7 +374,7 @@ class TranscriptLibraryDialog(QDialog):
             "Lee las transcripciones guardadas sin abrir el JSON. "
             "También puedes elegir un TXT, JSON o diario de recuperación antiguo."
         )
-        description.setWordWrap(True)
+        justify_label(description)
         description.setProperty("muted", True)
         layout.addWidget(description)
 
@@ -397,9 +401,10 @@ class TranscriptLibraryDialog(QDialog):
         self.title_label.setProperty("title", True)
         self.detail_label = QLabel()
         self.detail_label.setTextFormat(Qt.TextFormat.PlainText)
-        self.detail_label.setWordWrap(True)
+        justify_label(self.detail_label)
+        self.detail_label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
         self.detail_label.setProperty("muted", True)
-        self.viewer = QTextEdit()
+        self.viewer = ReviewTranscriptEdit()
         self.viewer.setReadOnly(True)
         self.viewer.setPlaceholderText(
             "Selecciona una transcripción de la lista o abre un archivo antiguo."
@@ -428,7 +433,23 @@ class TranscriptLibraryDialog(QDialog):
         find_bar.addWidget(self.previous_match)
         find_bar.addWidget(self.next_match)
         right_layout.addLayout(find_bar)
-        right_layout.addWidget(self.viewer, 1)
+        self.reading_splitter = QSplitter(Qt.Orientation.Vertical)
+        self.reading_splitter.setChildrenCollapsible(False)
+        self.viewer.setMinimumHeight(120)
+        self.reading_splitter.addWidget(self.viewer)
+        self.review = MediaReviewPanel()
+        self.review_scroll = QScrollArea()
+        self.review_scroll.setWidgetResizable(True)
+        self.review_scroll.setFrameShape(QScrollArea.Shape.NoFrame)
+        self.review_scroll.setMinimumHeight(180)
+        self.review_scroll.setWidget(self.review)
+        self.reading_splitter.addWidget(self.review_scroll)
+        self.review_scroll.hide()
+        self.review.hide()
+        self.viewer.timeRequested.connect(self._review_time)
+        self.review.timeChanged.connect(self.viewer.mark_time)
+        self.review.busyChanged.connect(self._review_busy)
+        right_layout.addWidget(self.reading_splitter, 1)
         splitter.addWidget(left)
         splitter.addWidget(right)
         splitter.setSizes([330, 650])
@@ -450,6 +471,10 @@ class TranscriptLibraryDialog(QDialog):
         self.moments_button.setEnabled(False)
         self.moments_button.clicked.connect(self._open_moments)
         actions.addWidget(self.moments_button)
+        self.review_button = QPushButton("Vídeo / audio")
+        self.review_button.setToolTip("Revisar una grabación local, saltar desde una frase y exportar intervalos sin modificar el original.")
+        self.review_button.clicked.connect(self._toggle_review)
+        actions.addWidget(self.review_button)
         actions.addStretch()
         actions.addWidget(self.folder_button)
         layout.addLayout(actions)
@@ -498,6 +523,8 @@ class TranscriptLibraryDialog(QDialog):
         path: Path,
         record: ArchivedTranscript | None = None,
     ) -> bool:
+        if self.review.busy:
+            return False
         try:
             text, entries = load_archived_transcript(path)
         except (OSError, ValueError, TypeError, json.JSONDecodeError) as exc:
@@ -512,7 +539,16 @@ class TranscriptLibraryDialog(QDialog):
         detail += f"\n{resolved}"
         self.detail_label.setText(detail)
         self.detail_label.setToolTip(str(resolved))
+        self.review.reset()
+        self.review.hide()
+        self.review_scroll.hide()
+        if entries:
+            text, spans = review_text(entries)
+        else:
+            spans = text_spans(text)
         self.viewer.setPlainText(text)
+        self.viewer.set_spans(spans)
+        self.viewer.setToolTip("Pulsa una frase para localizar su instante en la grabación. Arrastra para seleccionar texto sin saltar.")
         self.viewer.moveCursor(QTextCursor.MoveOperation.Start)
         self.folder_button.setEnabled(True)
         self.moments_button.setEnabled(self.bookmark_store is not None)
@@ -566,6 +602,47 @@ class TranscriptLibraryDialog(QDialog):
         if self._current_path is not None and self.bookmark_store is not None:
             MomentsDialog(self.bookmark_store, self._current_path, self).exec()
 
+    def _toggle_review(self):
+        if self.review_scroll.isVisible():
+            if self.review._player:
+                self.review._player.pause()
+            self.review.hide()
+            self.review_scroll.hide()
+            return
+        self._show_review()
+
+    def _show_review(self):
+        opening = self.review_scroll.isHidden()
+        self.review_scroll.show()
+        self.review.show()
+        if self._current_path is not None and self.review.source is None:
+            try:
+                associated = discover_session_media(self._current_path)
+                if associated is not None:
+                    self.review.load_media(associated)
+                else:
+                    self.review.status.setText("Elige primero una grabación local: no hay un archivo completo asociado automáticamente a esta transcripción.")
+            except OSError:
+                self.review.status.setText("No se pudo comprobar la grabación asociada. Puedes elegir un archivo local.")
+        if opening:
+            self.resize(max(self.width(), 1150), max(self.height(), 820))
+            self.reading_splitter.setSizes([260, 460])
+
+    def _review_time(self, seconds):
+        self._show_review()
+        if self.review.source is not None:
+            self.review.seek_session(seconds)
+
+    def _review_busy(self, busy):
+        self.list_widget.setEnabled(not busy)
+        self.choose_button.setEnabled(not busy)
+        self.search.setEnabled(not busy)
+        self.review_button.setEnabled(not busy)
+
+    def done(self, result):
+        self._find_timer.stop()
+        self.review.shutdown(lambda: super(TranscriptLibraryDialog, self).done(result))
+
     def _choose_file(self) -> None:
         selected, _ = QFileDialog.getOpenFileName(
             self,
@@ -589,6 +666,10 @@ class TranscriptLibraryDialog(QDialog):
             "Guarda una sesión o usa “Abrir otro archivo” para leer una transcripción antigua."
         )
         self.viewer.clear()
+        self.viewer.set_spans([])
+        self.review.reset()
+        self.review.hide()
+        self.review_scroll.hide()
         self.folder_button.setEnabled(False)
         self.moments_button.setEnabled(False)
         self._update_content_matches()

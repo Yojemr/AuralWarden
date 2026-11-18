@@ -15,10 +15,40 @@
         "stop",
         "transcript",
         "alerts",
-        "show"
+        "show",
+        "list_windows",
+        "list_audio_devices",
+        "select_windows_source",
+        "configure_session",
+        "set_stop_timer",
+        "create_clip",
+        "save_transcript",
+        "separate_audio",
+        "restore_audio"
       ]
     },
     "source": {"type": "string", "maxLength": 4096},
+    "application": {"type": "string", "minLength": 1, "maxLength": 80},
+    "confirmed": {"const": true},
+    "kind": {"enum": ["application_audio", "window_capture", "system_audio", "microphone"]},
+    "window_id": {"type": "string", "pattern": "^[a-f0-9]{32}$"},
+    "device": {"type": "string", "minLength": 1},
+    "duration_seconds": {"type": "number", "exclusiveMinimum": 0, "maximum": 604800},
+    "stop_at_epoch": {"type": "number", "exclusiveMinimum": 0},
+    "options": {
+      "type": "object",
+      "minProperties": 1,
+      "properties": {
+        "diarization": {"type": "boolean"},
+        "save_full_audio": {"type": "boolean"},
+        "save_full_video": {"type": "boolean"},
+        "audio_clips": {"type": "boolean"},
+        "video_clips": {"type": "boolean"},
+        "clip_pre_seconds": {"type": "integer", "minimum": 0, "maximum": 60},
+        "clip_post_seconds": {"type": "integer", "minimum": 0, "maximum": 120}
+      },
+      "additionalProperties": false
+    },
     "limit": {"type": "integer", "minimum": 1, "maximum": 200},
     "hotwords": {
       "type": "array",
@@ -41,5 +71,37 @@
       }
     }
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {"properties": {"action": {"const": "list_windows"}}},
+      "then": {"required": ["application"]}
+    },
+    {
+      "if": {"properties": {"action": {"const": "separate_audio"}}},
+      "then": {"required": ["application", "confirmed"]}
+    },
+    {
+      "if": {"properties": {"action": {"const": "list_audio_devices"}}},
+      "then": {"required": ["kind"], "properties": {"kind": {"enum": ["system_audio", "microphone"]}}}
+    },
+    {
+      "if": {"properties": {"action": {"const": "select_windows_source"}}},
+      "then": {
+        "required": ["kind"],
+        "allOf": [
+          {"if": {"properties": {"kind": {"enum": ["application_audio", "window_capture"]}}}, "then": {"required": ["window_id"]}},
+          {"if": {"properties": {"kind": {"enum": ["window_capture", "system_audio", "microphone"]}}}, "then": {"required": ["device"]}}
+        ]
+      }
+    },
+    {
+      "if": {"properties": {"action": {"const": "configure_session"}}},
+      "then": {"required": ["options"]}
+    },
+    {
+      "if": {"properties": {"action": {"const": "set_stop_timer"}}},
+      "then": {"not": {"required": ["duration_seconds", "stop_at_epoch"]}}
+    }
+  ]
 }

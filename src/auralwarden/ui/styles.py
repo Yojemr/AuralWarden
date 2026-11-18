@@ -83,6 +83,13 @@ QScrollArea > QWidget > QWidget { background: transparent; }
 QScrollBar:vertical { width: 7px; background: transparent; margin: 2px; }
 QScrollBar::handle:vertical { background: #415865; border-radius: 3px; min-height: 36px; }
 QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
+QScrollBar:horizontal { height: 9px; background: #0b1a24; margin: 1px; }
+QScrollBar::handle:horizontal { background: #415865; border-radius: 3px; min-width: 30px; }
+QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal { width: 0; }
+QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal { background: #0b1a24; }
+QSlider::groove:horizontal { height: 4px; background: #29414f; border-radius: 2px; }
+QSlider::sub-page:horizontal { background: #27c69a; border-radius: 2px; }
+QSlider::handle:horizontal { background: #9ae8d2; width: 12px; margin: -4px 0; border-radius: 5px; }
 QTableWidget {
     background: #0c1c27;
     border: none;

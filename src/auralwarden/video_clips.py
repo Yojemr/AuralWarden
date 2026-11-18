@@ -480,6 +480,12 @@ def render_full_video_recording(
     if result.returncode != 0 or not output_path.is_file() or output_path.stat().st_size == 0:
         output_path.unlink(missing_ok=True)
         raise RuntimeError(result.stderr.strip() or "FFmpeg terminó sin generar el vídeo.")
+    from auralwarden.media_review import save_timeline
+    try:
+        save_timeline(output_path, [(segment.start_seconds, segment.end_seconds) for segment in segments])
+    except OSError:
+        # A valid recording must not be discarded if the optional index cannot be written.
+        pass
     return output_path
 
 

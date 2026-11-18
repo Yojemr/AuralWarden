@@ -254,18 +254,27 @@ class ApplicationAudioRouter:
         self.process = subprocess.Popen(args, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
                                         stderr=subprocess.DEVNULL, creationflags=subprocess.CREATE_NO_WINDOW)
 
-    def activate(self, target: ProcessTarget, output: VirtualOutput):
+    def activate(self, target: ProcessTarget, output: VirtualOutput, *, wait=True):
         if self.active:
             raise WindowsAudioError("Restaura el audio pendiente antes de separar otra aplicación.")
         validate_process_target(target)
         if self.process is not None and self.process.poll() is None:
+            if not wait:
+                raise WindowsAudioError("El auxiliar de audio todavía está finalizando.")
             self.process.wait(timeout=2)
         owner = psutil.Process()
         lease = secrets.token_hex(16)
         write_route_json(self.state_path, {"schema": 1, "lease": lease, "phase": "requested",
             "owner_pid": owner.pid, "owner_created_at": owner.create_time(),
             "target": asdict(target), "endpoint_id": output.endpoint_id, "originals": {}})
-        self._launch()
+        try:
+            self._launch()
+        except OSError:
+            write_route_json(self.state_path, {"schema": 1, "lease": lease, "phase": "failed",
+                "error": "No se pudo iniciar el auxiliar de audio."})
+            raise
+        if not wait:
+            return lease
         deadline = time.monotonic() + 5
         while time.monotonic() < deadline:
             current = self.state

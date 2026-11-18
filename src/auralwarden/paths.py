@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import json
 import shutil
 import sys
 from pathlib import Path
@@ -42,8 +43,29 @@ def data_dir() -> Path:
     else:
         base = Path(os.environ.get("LOCALAPPDATA", Path.home() / "AppData" / "Local"))
         path = base / APP_NAME
+        location = application_root() / "data-location.json"
+        if location.exists():
+            if location.stat().st_size > 4096:
+                raise ValueError("La referencia a la carpeta de datos no es válida.")
+            raw = json.loads(location.read_text(encoding="utf-8"))
+            candidate = Path(raw.get("path", "")) if isinstance(raw, dict) else Path()
+            if not candidate.is_absolute() or not candidate.is_dir():
+                raise ValueError("La carpeta de datos elegida no está disponible. No se creó otra vacía.")
+            path = candidate.resolve()
     path.mkdir(parents=True, exist_ok=True)
     return path
+
+
+def select_installed_data_dir(path: Path) -> None:
+    if portable_mode() or os.environ.get("AURALWARDEN_DATA_DIR"):
+        raise ValueError("El modo portable o la variable AURALWARDEN_DATA_DIR ya determina la carpeta de datos.")
+    path = Path(path).expanduser().resolve()
+    if not path.is_dir() or not (path / "settings.json").is_file():
+        raise ValueError("Elige una carpeta data de AuralWarden que contenga settings.json.")
+    destination = application_root() / "data-location.json"
+    temporary = destination.with_suffix(".tmp")
+    temporary.write_text(json.dumps({"schema": 1, "path": str(path)}, ensure_ascii=False), encoding="utf-8")
+    temporary.replace(destination)
 
 
 def settings_path() -> Path:

@@ -106,7 +106,7 @@ class TranscriptBuffer:
                 entry.speaker_id = display_name
         self.dirty = bool(self.entries)
 
-    def export_text(self, path: Path, title: str = "AuralWarden session") -> None:
+    def export_text(self, path: Path, title: str = "AuralWarden session", *, exclusive: bool = False) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         lines = [title, f"Exported: {datetime.now().isoformat(timespec='seconds')}", ""]
         for paragraph in group_transcript_entries(self.entries):
@@ -120,7 +120,8 @@ class TranscriptBuffer:
                 f"{paragraph.text}{marker}"
             )
             lines.append("")
-        path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        with path.open("x" if exclusive else "w", encoding="utf-8") as output:
+            output.write("\n".join(lines) + "\n")
         self.dirty = False
 
     def export_json(self, path: Path) -> None:

@@ -4,17 +4,65 @@ El proyecto utiliza versionado semántico: `MAJOR.MINOR.PATCH`.
 
 ## [Unreleased]
 
+### Planned
+
+- Correcciones posteriores basadas en informes reproducibles de otros equipos.
+- Validación y empaquetado opcional de un componente `whisper.cpp` con Vulkan para hardware AMD e Intel.
+
+## [1.6.0] - 2026-11-18
+
+### Added
+
+- Selección por control local de audio de aplicación, ventana, micrófono y audio del sistema.
+- Separación y restauración de audio de la aplicación monitoreada con VB-CABLE. El estado indica la respuesta de Windows.
+- Configuración de grabaciones, clips y diarización, temporizador, clips manuales y guardado de transcripciones desde el control local.
+- Skill de Codex con descubrimiento de la instancia y verificación de compatibilidad por versión.
+
+## [1.5.0] - 2026-11-10 — Validación local
+
+### Added
+
+- Revisión audiovisual desde la biblioteca de transcripciones, con reproductor local bajo demanda, pausa, búsqueda por hora, deslizador y audio propio silenciado inicialmente.
+- Clic en el texto para localizar el fragmento de una transcripción JSON/JSONL; los TXT con marcas HH:MM:SS permiten saltos por párrafo. La selección, búsqueda literal y contenido original se conservan.
+- Resaltado del fragmento correspondiente durante la reproducción, sin desplazar la lectura ni reemplazar la selección de búsqueda.
+- Asociación automática conservadora con la grabación completa de una sesión terminada y selección manual de otro vídeo o audio local.
+- Índices temporales junto a nuevas grabaciones completas de vídeo y clips exportados. Mantienen el reloj de sesión al concatenar segmentos y distinguen intervalos sin grabación. Para archivos sin índice se informa de su ausencia y se permite ajustar un desfase manual sin modificar los archivos.
+- Exportación de un intervalo continuo a MP4 o WAV en segundo plano, sin reemplazar archivos existentes ni el original, con cancelación y codificación limitada a dos hilos.
+
+### Distribution
+
+- Carpeta portable local; no se prepara un nuevo instalador 1.4.1 ni se publica automáticamente. La receta de instalación permanece disponible para una entrega posterior.
+- El análisis de medios reutiliza PyAV, ya incluido en el paquete, sin añadir un segundo ejecutable de unos 97 MiB.
+
+## [1.4.1] - 2026-11-07 — Validación local
+
+### Fixed
+
+- Párrafos justificados en la transcripción en vivo, subtítulos auxiliares, biblioteca, historial, preferencias, preparación de modelos, separación de audio, perfiles, presets, momentos, temporizador, almacenamiento y mensajes de la aplicación. Se conservan la alineación de los títulos, botones y etiquetas breves, las marcas de tiempo y los enlaces internos.
+- «Acerca de» utiliza una ventana redimensionable y texto seleccionable con desplazamiento. Las rutas largas se ajustan al ancho disponible sin truncarlas y los avisos de terceros pueden abrirse mediante un botón local.
+- Las pestañas de preferencias admiten desplazamiento para evitar que el panel de equipo, sus botones y otros campos se superpongan cuando falta altura.
+- La presentación de los párrafos no modifica las transcripciones exportadas, los textos de contexto ni el reconocimiento y la detección de hotwords.
+
+## [1.4.0] - 2026-11-06 — Validación local
+
+### Added
+
+- Instalador por usuario con receta reutilizable de Inno Setup 7, sin permisos de administrador, controladores ni modelos incorporados. Conserva los datos separados del programa durante actualizaciones y desinstalación.
+- Protección de la edición instalada mediante un mutex: el instalador no fuerza el cierre de AuralWarden mientras está abierta.
+- Temporizador de detención por duración o fecha/hora local, configurable antes de iniciar o durante la sesión, con cuenta regresiva y acceso desde la bandeja. Utiliza el flujo normal de detención y restauración de audio, sin apagar Windows.
+- Gestor de almacenamiento con análisis acotado en segundo plano, tamaños por categoría y espacio libre. Clips, grabaciones y transcripciones seleccionados pueden enviarse a la Papelera con confirmación y solo sin monitoreo activo.
+- Protección de configuración, modelos, componentes y material de recuperación; no hay limpieza automática ni alternativa de borrado permanente cuando falla la Papelera.
+- Reutilización voluntaria de una carpeta de datos existente en la edición instalada, sin copiar ni mover archivos. El cambio se aplica al siguiente inicio y falla explícitamente si la carpeta deja de existir.
+
 ### Changed
 
 - Actualizaciones seleccionadas de Streamlink, yt-dlp, certifi, charset-normalizer, idna y urllib3 para mantenimiento de captura web y conexiones HTTPS. Se conservan las versiones verificadas de Qt, CTranslate2 y los componentes CUDA en lugar de actualizar todo el grupo de dependencias simultáneamente.
 - Pycaw 20260927: mejoras de lectura de propiedades de dispositivos y correcciones de interfaces COM. Enumeración y lectura de volumen comprobadas sin modificar salidas, volumen ni silencio.
 - Actualizaciones de las acciones oficiales de preparación de Python y CodeQL, conservando los permisos mínimos y la instalación de pruebas en un entorno aislado.
 
-### Planned
+### Distribution
 
-- Correcciones posteriores basadas en informes reproducibles de otros equipos.
-- Validación y empaquetado opcional de un componente `whisper.cpp` con Vulkan para hardware AMD e Intel.
-- Instalador reutilizable para Windows previsto para 1.4.0, con actualización que conserve los datos del usuario.
+- Candidata local con portable e instalador sin firma digital. No modifica la Release pública 1.3.0; la distribución binaria pública sigue pendiente de completar la correspondencia de fuentes de bibliotecas nativas.
 
 ## [1.3.0] - 2026-11-06
 

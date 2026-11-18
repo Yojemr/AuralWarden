@@ -1,5 +1,7 @@
 # Primer inicio y actualización
 
+La edición instalada 1.4.0 conserva por defecto sus datos en `%LOCALAPPDATA%\AuralWarden`, separados del programa. La edición portable sigue usando su propia carpeta `data`. Para actualizar mediante el instalador o reutilizar los datos de una edición anterior sin copiarlos, consulta [Instalación](INSTALLATION.md).
+
 ## Paquete portable
 
 1. Extrae la carpeta completa en una ubicación de Windows donde puedas escribir. No ejecutes el programa dentro de un ZIP ni copies únicamente el `.exe`.

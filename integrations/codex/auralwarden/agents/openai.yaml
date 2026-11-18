@@ -1,0 +1,7 @@
+interface:
+  display_name: "AuralWarden local"
+  short_description: "Transcripción, hotwords, clips y control local"
+  default_prompt: "Usa $auralwarden para comprobar el estado local y realizar la tarea solicitada sin interferir con sesiones existentes."
+
+policy:
+  allow_implicit_invocation: true

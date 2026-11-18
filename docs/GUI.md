@@ -1,4 +1,12 @@
-# Interfaz gráfica de AuralWarden 1.3.0
+# Interfaz gráfica de AuralWarden
+
+## Temporizador y almacenamiento
+
+**Menú > Temporizador de detención** permite elegir una duración desde el inicio o una fecha/hora local. Si se configura durante una sesión, la duración cuenta desde ese momento. **Sin temporizador** cancela la programación. El tiempo restante aparece junto al estado y se incluye en la información de la bandeja. No se conserva al cerrar la aplicación ni despierta el PC. La detención utiliza el flujo normal de finalización y restauración de audio; no guarda automáticamente una transcripción si no se eligió su guardado.
+
+**Menú > Almacenamiento** analiza la carpeta de datos en segundo plano, muestra espacio libre y categorías y permite seleccionar clips, grabaciones o transcripciones para enviarlos a la Papelera. Requiere confirmación y monitoreo detenido. Los archivos modificados, las sesiones sin finalizar, las rutas enlazadas y los datos protegidos no se eliminan. Modelos, componentes, configuración y recuperación son de consulta en esta versión. La Papelera no se vacía desde AuralWarden.
+
+La edición instalada añade **Reutilizar carpeta de datos**. Consulta [Instalación](INSTALLATION.md) antes de seleccionar datos de una edición anterior.
 
 ## Momentos y clips manuales
 
@@ -7,6 +15,20 @@ En el menú superior derecho, **Momentos** permite marcar un instante con una no
 El clip manual usa los tipos de clip que estén activados y los segundos anteriores y posteriores configurados. No activa una captura de vídeo que no se hubiera preparado antes. No genera una hotword, un sonido de detección ni la restauración del audio separado. Espera al intervalo posterior antes de abrir el resultado; detener antes puede producir un fragmento incompleto.
 
 La biblioteca **Transcripciones** conserva el filtro por título/fecha/archivo y añade una búsqueda en el texto abierto con Ctrl+F, contador y navegación anterior/siguiente. **Marcadores** abre las notas de ese archivo o sesión y permite añadir una hora HH:MM:SS. Las notas se guardan aparte, sin editar el original; mover la sesión a otra ruta no reasocia automáticamente sus marcadores.
+
+## Revisión audiovisual de transcripciones guardadas
+
+En **Transcripciones**, pulsa una frase o **Vídeo / audio** para mostrar el reproductor. Una sesión terminada puede asociar su grabación completa; **Elegir vídeo / audio** permite seleccionar otra. El archivo no se reproduce continuamente por abrirlo: un salto muestra su fotograma en pausa y **Reproducir** inicia la reproducción. El audio del reproductor empieza silenciado y no modifica las salidas de otras aplicaciones.
+
+**Ir al tiempo** admite HH:MM:SS.mmm. El deslizador, **Marcar inicio** y **Marcar fin** permiten seleccionar un intervalo y exportar un clip independiente. No se reemplazan archivos existentes. La exportación puede cancelarse; cerrar durante una exportación solicita su cancelación antes de destruir la ventana.
+
+JSON/JSONL permiten localizar fragmentos; los TXT con marcas permiten saltos por párrafo. Las nuevas grabaciones completas de vídeo incorporan un índice temporal; los archivos sin índice muestran una advertencia y admiten desfase manual. Los cortes sin grabación no se exportan como si contuvieran vídeo. Consulta los límites de sincronización en [Notas de 1.5.0](RELEASE_NOTES_1.5.0.md).
+
+## Presentación de textos
+
+Los párrafos explicativos, la transcripción, los subtítulos y el texto de la biblioteca e historial se justifican sin alterar su contenido. Los títulos, botones y etiquetas breves conservan su alineación. La última línea de cada párrafo no se estira artificialmente.
+
+**Acerca de** permite redimensionar la ventana, seleccionar el texto y desplazar las rutas largas; **Abrir avisos de terceros** abre el documento local incluido. Las pestañas de Preferencias admiten desplazamiento cuando sus campos no caben en la altura disponible.
 
 ## Inicio
 
@@ -117,7 +139,7 @@ El panel de recursos muestra el perfil adaptativo. La protección no cambia de m
 
 Mientras AuralWarden permanezca abierto —visible o en la bandeja— un cliente autorizado puede consultar su estado, colocar un enlace HTTP/HTTPS, reemplazar las hotwords, iniciar, detener, leer una porción reciente de la transcripción o las alertas y restaurar la ventana. Los archivos y dispositivos continúan siendo selecciones manuales.
 
-Desactivar la opción elimina la credencial local. El protocolo completo, sus límites y ejemplos están en `AGENT_CONTROL.md`.
+Desde 1.6.0, el control local puede seleccionar fuentes de Windows, ajustar grabaciones y diarización, programar la detención, crear clips y guardar transcripciones. La salida de la aplicación monitoreada se puede separar y restaurar mediante VB-CABLE. Desactivar la opción elimina la credencial local. El [catálogo de órdenes](AGENT_CONTROL.md) detalla los permisos, límites y estados.
 
 ## Alcance actual
 

@@ -332,11 +332,11 @@ class MonitoringController(QObject):
             self._unsubscribe = None
         return True
 
-    def export_transcript(self, path: Path) -> None:
+    def export_transcript(self, path: Path, *, exclusive: bool = False) -> None:
         transcript = self._current_transcript()
         if transcript is None or not transcript.entries:
             raise RuntimeError("No hay una transcripción para guardar.")
-        transcript.export_text(path, "AuralWarden")
+        transcript.export_text(path, "AuralWarden", exclusive=exclusive)
         if self._recovered_session is not None:
             discard_recovery(self._recovered_session)
 

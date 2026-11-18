@@ -7,6 +7,7 @@ from PySide6.QtWidgets import (QDialog, QDialogButtonBox, QHBoxLayout, QInputDia
     QLabel, QListWidget, QListWidgetItem, QMessageBox, QPushButton, QVBoxLayout)
 
 from auralwarden.bookmarks import BookmarkStore, validated_seconds
+from auralwarden.ui.typography import justify_label
 
 
 def timestamp(seconds):
@@ -25,10 +26,11 @@ class MomentsDialog(QDialog):
         self.setMinimumSize(660, 420)
         layout = QVBoxLayout(self)
         description = QLabel("Marcadores locales con hora y nota. No modifican la transcripción original.")
-        description.setWordWrap(True)
+        justify_label(description)
         layout.addWidget(description)
         self.items = QListWidget()
         self.items.setWordWrap(True)
+        self.items.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         layout.addWidget(self.items)
         actions = QHBoxLayout()
         add = QPushButton("Añadir marcador")
@@ -49,6 +51,7 @@ class MomentsDialog(QDialog):
         try:
             for record in self.store.records(self.scope):
                 item = QListWidgetItem(f"{timestamp(record['elapsed_seconds'])} · {record['note']}")
+                item.setTextAlignment(Qt.AlignmentFlag.AlignJustify | Qt.AlignmentFlag.AlignTop)
                 item.setData(Qt.ItemDataRole.UserRole, record["id"])
                 self.items.addItem(item)
         except (OSError, ValueError) as exc:

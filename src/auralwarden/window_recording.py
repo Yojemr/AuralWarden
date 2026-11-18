@@ -18,6 +18,7 @@ from auralwarden.paths import data_dir, sessions_dir
 from auralwarden.session import SessionWorkspace
 from auralwarden.ui.assets import asset_path
 from auralwarden.ui.styles import APP_STYLESHEET
+from auralwarden.ui.typography import justify_label
 from auralwarden.video_clips import cleanup_video_buffer, render_full_video_recording
 from auralwarden.window_video import WindowPcmCapture, WindowTarget, window_target
 
@@ -43,13 +44,13 @@ class WindowRecordingDialog(QDialog):
         layout.addWidget(self.title_label)
         self.status_label = QLabel("Preparando vídeo y audio del sistema…")
         self.status_label.setTextFormat(Qt.TextFormat.PlainText)
-        self.status_label.setWordWrap(True)
+        justify_label(self.status_label)
         layout.addWidget(self.status_label)
         self.time_label = QLabel("00:00:00")
         layout.addWidget(self.time_label)
         notice = QLabel("Solo se graba esta ventana. El audio del PC permanece audible.\n"
                         "Si cambias de pestaña en esta ventana, también quedará grabada.")
-        notice.setWordWrap(True)
+        justify_label(notice)
         layout.addWidget(notice)
         self.stop_button = QPushButton("Detener y guardar vídeo")
         self.stop_button.clicked.connect(self.stop_recording)

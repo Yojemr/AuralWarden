@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import secrets
 import sys
 import time
 from dataclasses import asdict
@@ -8,7 +9,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
-from PySide6.QtCore import QEvent, QTimer, QUrl, Qt
+from PySide6.QtCore import QEvent, QSignalBlocker, QTimer, QUrl, Qt
 from PySide6.QtGui import QCloseEvent, QDesktopServices, QIcon, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
@@ -32,9 +33,11 @@ from PySide6.QtWidgets import (
 from auralwarden import __version__
 from auralwarden.alert_history import AlertHistoryStore
 from auralwarden.bookmarks import BookmarkStore
+from auralwarden.stop_timer import StopTimer
+from auralwarden.ui.maintenance_dialogs import StopTimerDialog, StorageDialog
 from auralwarden.ui.moments_dialog import MomentsDialog
 from auralwarden.captions import is_youtube_source
-from auralwarden.filenames import date_time_label
+from auralwarden.filenames import date_time_label, unique_path
 from auralwarden.local_control import (
     CONTROL_PROTOCOL_VERSION,
     LocalControlAuditStore,
@@ -51,11 +54,12 @@ from auralwarden.migration import (
 from auralwarden.models import AppSettings, EngineEvent, EventKind, Hotword, SessionState
 from auralwarden.model_installer import initialize_data_layout
 from auralwarden.model_catalog import discover_local_whisper_models
-from auralwarden.process_audio import ProcessTarget, validate_process_target
+from auralwarden.process_audio import ProcessPcmCapture, ProcessTarget, validate_process_target
 from auralwarden.audio_routing import ApplicationAudioRouter, list_virtual_outputs
 from auralwarden.ui.virtual_audio_dialog import VirtualAudioDialog
 from auralwarden.ui.setup_dialog import ModelSetupDialog
 from auralwarden.paths import application_root, portable_mode, sessions_dir, transcripts_dir
+from auralwarden.paths import select_installed_data_dir
 from auralwarden.presets import PresetStore
 from auralwarden.runtime_status import RuntimeStatusStore
 from auralwarden.settings_store import SettingsStore
@@ -63,6 +67,7 @@ from auralwarden.session_recovery import discard_recovery, find_recoverable_tran
 from auralwarden.speaker_profiles import SpeakerProfileStore
 from auralwarden.source_info import SourceInfo, fallback_source_info
 from auralwarden.ui.assets import asset_path
+from auralwarden.ui.about_dialog import AboutDialog
 from auralwarden.ui.controller import MonitoringController
 from auralwarden.ui.dialogs import PreferencesDialog, SpeakerNamesDialog
 from auralwarden.ui.management_dialogs import (
@@ -87,7 +92,9 @@ from auralwarden.windows_audio import (
     WindowsAudioError,
     list_windows_audio_devices,
 )
-from auralwarden.window_video import WindowCaptureError, list_capture_windows, validate_target
+from auralwarden.window_video import (
+    WindowCaptureError, WindowPcmCapture, list_capture_windows, validate_target, window_target,
+)
 
 
 class MainWindow(QMainWindow):
@@ -115,6 +122,8 @@ class MainWindow(QMainWindow):
             first_launch = not self.store.path.exists()
         self.settings = AppSettings() if demo else self.store.load()
         self._selected_window_target = None
+        self._control_windows = {}
+        self._control_windows_expire = 0.0
         self.settings.window_capture_hwnd = 0
         self.settings.window_capture_pid = 0
         self.settings.window_capture_created_at = 0.0
@@ -175,6 +184,7 @@ class MainWindow(QMainWindow):
             or fallback_source_info(self.settings.source_url).title
         )
         self._last_match = "Sin coincidencias"
+        self.stop_timer = StopTimer()
         self.bookmarks = BookmarkStore(self.store.path.with_name("bookmarks.json"))
         self._clip_count = 0
         self._clip_events: set[str] = set()
@@ -528,6 +538,10 @@ class MainWindow(QMainWindow):
         self.session_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         status_layout.addLayout(status_line)
         status_layout.addWidget(self.session_label)
+        self.timer_status = QLabel("Sin temporizador")
+        self.timer_status.setProperty("muted", True)
+        self.timer_status.setToolTip("Configura la detención desde el menú o la bandeja. No apaga Windows.")
+        status_layout.addWidget(self.timer_status)
         header.addWidget(status_box)
 
         menu_button = QPushButton()
@@ -535,6 +549,10 @@ class MainWindow(QMainWindow):
         menu_button.setProperty("flat", True)
         menu_button.setToolTip("Preferencias, modelos e información legal")
         app_menu = QMenu(menu_button)
+        app_menu.addAction("Temporizador de detención…").triggered.connect(self.configure_stop_timer)
+        app_menu.addAction("Almacenamiento…").triggered.connect(self.open_storage)
+        app_menu.addAction("Reutilizar carpeta de datos…").triggered.connect(self.choose_data_directory)
+        app_menu.addSeparator()
         moments_menu = app_menu.addMenu("Momentos")
         mark_action = moments_menu.addAction("Marcar momento · nota")
         mark_action.setShortcut("Ctrl+M")
@@ -793,7 +811,7 @@ class MainWindow(QMainWindow):
         except OSError:
             pass
 
-    def _source_kind_changed(self, *_: object) -> None:
+    def _source_kind_changed(self, *_: object, devices=None, preferred_device=None) -> None:
         kind = str(self.source_kind.currentData() or "url")
         is_url = kind == "url"
         is_app = kind == "application_audio"
@@ -827,7 +845,7 @@ class MainWindow(QMainWindow):
             self.preview.stop()
             self.preview_panel.set_preview_active(False)
             if not is_app:
-                self._refresh_audio_devices()
+                self._refresh_audio_devices(devices=devices, preferred_device=preferred_device)
             else:
                 self._source_device_changed()
         else:
@@ -836,7 +854,7 @@ class MainWindow(QMainWindow):
             self._request_source_title()
         self._update_caption_preview_visibility()
 
-    def _refresh_audio_devices(self) -> None:
+    def _refresh_audio_devices(self, *, devices=None, preferred_device=None) -> None:
         kind = str(self.source_kind.currentData() or "url")
         if kind in {"url", "application_audio"}:
             return
@@ -847,11 +865,12 @@ class MainWindow(QMainWindow):
             if kind == "system_audio"
             else self.settings.microphone_device
         )
-        current = str(self.source_device.currentData() or preferred)
+        current = preferred_device or str(self.source_device.currentData() or preferred)
         self.source_device.blockSignals(True)
         self.source_device.clear()
         try:
-            devices = list_windows_audio_devices(kind)
+            if devices is None:
+                devices = list_windows_audio_devices(kind)
         except WindowsAudioError as exc:
             self.source_device.addItem("No disponible", "")
             self.source_device.setToolTip(str(exc))
@@ -925,7 +944,11 @@ class MainWindow(QMainWindow):
         )
         if not accepted:
             return
-        self._selected_window_target = targets[labels.index(choice)]
+        self._select_capture_window(targets[labels.index(choice)])
+
+    def _select_capture_window(self, target) -> None:
+        self._selected_window_target = target
+        is_app = self.source_kind.currentData() == "application_audio"
         self.window_pick_button.setText("Aplicación elegida" if is_app else "Ventana elegida")
         if is_app:
             self._source_device_changed()
@@ -977,6 +1000,12 @@ class MainWindow(QMainWindow):
     def start_monitoring(self, *, interactive: bool = True) -> bool:
         if self.controller.running:
             return False
+        if self.stop_timer.stop_at_epoch is not None and self.stop_timer.stop_at_epoch <= time.time():
+            message = "La hora de detención ya pasó. Actualiza o desactiva el temporizador antes de iniciar."
+            if interactive:
+                QMessageBox.warning(self, "Temporizador vencido", message)
+                return False
+            raise ValueError(message)
         if self.controller.transcript_dirty:
             if not interactive:
                 raise RuntimeError(
@@ -1087,9 +1116,12 @@ class MainWindow(QMainWindow):
         else:
             self._source_device_changed()
         self._set_state(SessionState.STARTING)
+        self.stop_timer.arm()
         return True
 
     def stop_monitoring(self) -> None:
+        self.stop_timer.clear()
+        self.timer_status.setText("Sin temporizador")
         self._restore_silent_audio("La salida se restauró al detener el monitoreo.")
         self.controller.stop()
         self.preview.stop()
@@ -1312,6 +1344,8 @@ class MainWindow(QMainWindow):
             )
         self._update_silent_controls()
         if state in {SessionState.STOPPED, SessionState.FAILED}:
+            self.stop_timer.clear()
+            self.timer_status.setText("Sin temporizador")
             self._restore_silent_audio("La salida de audio fue restaurada.")
             self._last_audio_level = 0.0
             self.resources.update_audio_level(0.0)
@@ -1336,6 +1370,16 @@ class MainWindow(QMainWindow):
         self._write_runtime_status()
 
     def _update_elapsed(self) -> None:
+        remaining = self.stop_timer.remaining()
+        if remaining is not None:
+            seconds_left = max(0, int(remaining + 0.999))
+            hours_left, rest = divmod(seconds_left, 3600)
+            minutes_left, seconds_left = divmod(rest, 60)
+            self.timer_status.setText(f"Detención en {hours_left:02d}:{minutes_left:02d}:{seconds_left:02d}")
+            if remaining <= 0 and self.controller.running:
+                self.stop_monitoring()
+                self._status_detail = "Temporizador cumplido: finalizando clips y grabaciones. La transcripción sigue disponible."
+                self.status_label.setToolTip(self._status_detail)
         if self._stopped_elapsed is not None:
             total = self._stopped_elapsed
         elif self._started_monotonic is None:
@@ -1355,7 +1399,48 @@ class MainWindow(QMainWindow):
             SessionState.STOPPING,
         }:
             return
-        self.tray.setToolTip(f"AuralWarden · {self.status_label.text()} · {text}")
+        self.tray.setToolTip(f"AuralWarden · {self.status_label.text()} · {text} · {self.timer_status.text()}")
+
+    def configure_stop_timer(self) -> None:
+        dialog = StopTimerDialog(self.stop_timer, self)
+        if dialog.exec() != dialog.DialogCode.Accepted:
+            return
+        try:
+            dialog.apply_to(self.stop_timer)
+            self._apply_stop_timer()
+        except ValueError as exc:
+            QMessageBox.warning(self, "Tiempo no válido", str(exc))
+
+    def _apply_stop_timer(self) -> None:
+        if self.controller.running:
+            self.stop_timer.arm()
+        configured = self.stop_timer.duration_seconds or self.stop_timer.stop_at_epoch
+        self.timer_status.setText("Temporizador preparado" if configured else "Sin temporizador")
+        self._update_elapsed()
+
+    def open_storage(self) -> None:
+        StorageDialog(self.store.path.parent, lambda: not self.controller.running, self).exec()
+
+    def choose_data_directory(self) -> None:
+        if self.controller.running:
+            QMessageBox.information(self, "Monitoreo activo", "Detén el monitoreo antes de cambiar la carpeta de datos.")
+            return
+        if portable_mode():
+            QMessageBox.information(self, "Modo portable", "Esta edición utiliza su propia carpeta data. La edición instalada permite reutilizar una carpeta de datos existente.")
+            return
+        chosen = QFileDialog.getExistingDirectory(self, "Elegir carpeta data con settings.json")
+        if not chosen:
+            return
+        if QMessageBox.question(self, "Reutilizar datos al próximo inicio",
+            "Se utilizarán la configuración, modelos y sesiones de esa carpeta al abrir nuevamente AuralWarden. No se copian ni mueven archivos.\n\nCierra cualquier otra versión que utilice esa carpeta y no elimines la carpeta original. Guarda la transcripción actual antes de salir. ¿Confirmas el cambio?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No) != QMessageBox.StandardButton.Yes:
+            return
+        try:
+            select_installed_data_dir(Path(chosen))
+            QMessageBox.information(self, "Carpeta elegida", "El cambio se aplicará cuando cierres y vuelvas a abrir AuralWarden. Los datos actuales se conservan.")
+        except (OSError, ValueError) as exc:
+            QMessageBox.warning(self, "No se pudo elegir la carpeta", str(exc))
 
     def preview_panel_set_frame(self, frame: bytes) -> None:
         self.preview_panel.set_frame(frame)
@@ -1770,21 +1855,7 @@ class MainWindow(QMainWindow):
         self._apply_interface_scale()
 
     def open_about(self) -> None:
-        box = QMessageBox(self)
-        box.setWindowTitle("Acerca de AuralWarden")
-        box.setIconPixmap(QPixmap(str(asset_path("app-icon.png"))).scaled(
-            64, 64, Qt.AspectRatioMode.KeepAspectRatio,
-            Qt.TransformationMode.SmoothTransformation,
-        ))
-        box.setText(f"AuralWarden {__version__}\nCreado por Yojemr")
-        box.setInformativeText(
-            "Software libre bajo GNU GPL versión 3 exclusivamente. Puedes copiarlo y modificarlo "
-            "bajo esos términos. Se proporciona SIN GARANTÍA.\n\n"
-            "Los componentes, modelos, iconos y herramientas de terceros conservan sus propias licencias. "
-            "Consulta LICENSE, NOTICE y docs/THIRD_PARTY_NOTICES.md incluidos en la carpeta de AuralWarden."
-        )
-        box.setStandardButtons(QMessageBox.StandardButton.Ok)
-        box.exec()
+        AboutDialog(self).exec()
 
     def open_presets(self) -> None:
         if self.controller.running:
@@ -1819,7 +1890,11 @@ class MainWindow(QMainWindow):
                 roots.extend(
                     [previous / "data" / "sessions", previous / "data" / "transcripts"]
                 )
-        TranscriptLibraryDialog(roots, self, bookmark_store=self.bookmarks).exec()
+        dialog = TranscriptLibraryDialog(roots, self, bookmark_store=self.bookmarks)
+        try:
+            dialog.exec()
+        finally:
+            dialog.deleteLater()
 
     def add_moment(self) -> None:
         engine = getattr(self.controller, "engine", None)
@@ -1971,6 +2046,7 @@ class MainWindow(QMainWindow):
         self.tray_menu.addSeparator()
         self.tray_manual_clip = self.tray_menu.addAction("Crear clip manual")
         self.tray_manual_clip.triggered.connect(self.create_manual_clip)
+        self.tray_menu.addAction("Temporizador…").triggered.connect(self.configure_stop_timer)
         open_action = self.tray_menu.addAction(aw_icon("fa6s.window-restore"), "Abrir AuralWarden")
         open_action.triggered.connect(self._restore_window)
         self.tray_mute = self.tray_menu.addAction(aw_icon("fa6s.volume-high"), "Silenciar alertas")
@@ -2064,6 +2140,15 @@ class MainWindow(QMainWindow):
                         "transcript",
                         "alerts",
                         "show",
+                        "list_windows",
+                        "list_audio_devices",
+                        "select_windows_source",
+                        "configure_session",
+                        "set_stop_timer",
+                        "create_clip",
+                        "save_transcript",
+                        "separate_audio",
+                        "restore_audio",
                     ],
                     limits={"transcript": 200, "alerts": 200, "hotwords": 100},
                 )
@@ -2174,9 +2259,173 @@ class MainWindow(QMainWindow):
             if action == "show":
                 self._restore_window()
                 return finish(True, "ok", "Ventana restaurada.")
+            if action == "list_windows":
+                return finish(True, "ok", "Ventanas consultadas.", windows=self._control_list_windows(request))
+            if action == "list_audio_devices":
+                kind = request.get("kind")
+                if kind not in ("system_audio", "microphone"):
+                    raise ValueError("Indica system_audio o microphone.")
+                devices = list_windows_audio_devices(kind)
+                return finish(True, "ok", "Dispositivos consultados.",
+                              devices=[asdict(item) for item in devices[:100]])
+            if action == "select_windows_source":
+                self._control_select_source(request)
+                return finish(True, "ok", "Fuente seleccionada.", status=self._local_control_status())
+            if action == "configure_session":
+                self._control_configure_session(request.get("options"))
+                return finish(True, "ok", "Opciones configuradas.", status=self._local_control_status())
+            if action == "set_stop_timer":
+                self.stop_timer.configure(duration_seconds=request.get("duration_seconds"),
+                                          stop_at_epoch=request.get("stop_at_epoch"))
+                self._apply_stop_timer()
+                return finish(True, "ok", "Temporizador actualizado.", timer=self._control_timer())
+            if action == "create_clip":
+                engine = self.controller.engine
+                if engine is None:
+                    raise ValueError("Inicia el monitoreo antes de crear un clip.")
+                return finish(True, "accepted", "Clip manual solicitado.", event_id=engine.request_manual_clip())
+            if action == "save_transcript":
+                folder = self.controller.transcripts_path or transcripts_dir()
+                filename = f"{date_time_label(datetime.now())} - Transcripcion.txt"
+                path = unique_path(folder / filename)
+                self.controller.export_transcript(path, exclusive=True)
+                return finish(True, "ok", "Transcripción guardada.", filename=path.name)
+            if action == "separate_audio":
+                self._control_separate_audio(request)
+                return finish(True, "accepted", "Separación solicitada.", audio_route=self._control_audio_route())
+            if action == "restore_audio":
+                requested = self.application_router.recover_interrupted()
+                self._update_silent_controls()
+                return finish(True, "accepted" if requested else "ok",
+                              "Restauración solicitada." if requested else "No hay audio separado.",
+                              audio_route=self._control_audio_route())
             return finish(False, "unknown_action", "Acción local no permitida.")
         except (OSError, RuntimeError, ValueError, TypeError) as exc:
             return finish(False, "command_failed", redact_text(exc)[:500])
+
+    def _control_list_windows(self, request):
+        application = self._control_application_name(request.get("application"))
+        targets = [target for target in list_capture_windows() if
+                   Path(target.executable).stem.casefold() == application][:40]
+        self._control_windows = {secrets.token_hex(16): target for target in targets}
+        self._control_windows_expire = time.monotonic() + 120
+        return [{"id": identifier, "application": Path(target.executable).stem,
+                 "title": redact_text(target.title)[:160]}
+                for identifier, target in self._control_windows.items()]
+
+    @staticmethod
+    def _control_application_name(value) -> str:
+        if not isinstance(value, str) or not value.strip() or len(value) > 80 or any(
+            char in value for char in ("/", "\\", ":")
+        ):
+            raise ValueError("Indica el nombre del ejecutable, por ejemplo chrome.")
+        return value.strip().casefold().removesuffix(".exe")
+
+    def _control_require_idle(self) -> None:
+        if self.controller.running:
+            raise ValueError("Detén el monitoreo antes de cambiar la fuente o las opciones de sesión.")
+
+    def _control_select_source(self, request) -> None:
+        self._control_require_idle()
+        kind = request.get("kind")
+        if kind not in ("application_audio", "window_capture", "system_audio", "microphone"):
+            raise ValueError("Tipo de fuente Windows no válido.")
+        target = None
+        device = request.get("device")
+        devices = None
+        if kind in ("application_audio", "window_capture"):
+            identifier = request.get("window_id")
+            target = self._control_windows.get(identifier) if isinstance(identifier, str) else None
+            if target is None or time.monotonic() >= self._control_windows_expire:
+                raise ValueError("Selecciona un ID vigente obtenido con list_windows.")
+            current = window_target(target.hwnd)
+            if ProcessTarget.from_window(current) != ProcessTarget.from_window(target):
+                raise ValueError("La ventana cambió. Consulta las ventanas nuevamente.")
+            if kind == "window_capture":
+                validate_target(current)
+            target = current
+        if kind != "application_audio":
+            device_kind = "microphone" if kind == "microphone" else "system_audio"
+            devices = list_windows_audio_devices(device_kind)
+            if not isinstance(device, str) or not device or not any(item.name == device for item in devices):
+                raise ValueError("Selecciona un dispositivo disponible obtenido con list_audio_devices.")
+        with QSignalBlocker(self.source_kind):
+            self.source_kind.setCurrentIndex(self.source_kind.findData(kind))
+        self._source_kind_changed(devices=devices, preferred_device=device)
+        if target is not None:
+            self._select_capture_window(target)
+        self._collect_settings()
+        self._write_runtime_status()
+
+    def _control_configure_session(self, options) -> None:
+        self._control_require_idle()
+        if not isinstance(options, dict) or not options:
+            raise ValueError("Indica las opciones de sesión que deseas cambiar.")
+        panel = self.quick_settings
+        switches = {
+            "diarization": panel.diarization, "save_full_audio": panel.save_full_audio,
+            "save_full_video": panel.save_full_video, "audio_clips": panel.save_event_clips,
+            "video_clips": panel.save_event_video_clips,
+        }
+        durations = {"clip_pre_seconds": panel.pre_seconds, "clip_post_seconds": panel.post_seconds}
+        for name, value in options.items():
+            if name in switches and type(value) is bool:
+                if value and name in {"save_full_video", "video_clips"} and not self._source_supports_video():
+                    raise ValueError("La fuente elegida no admite vídeo.")
+            elif name in durations and type(value) is int and 0 <= value <= durations[name].maximum():
+                continue
+            else:
+                raise ValueError("Opción de sesión o valor no válido.")
+        for name, value in options.items():
+            if name in switches:
+                switches[name].setChecked(value)
+            else:
+                durations[name].setValue(value)
+        self._collect_settings()
+
+    def _control_separate_audio(self, request) -> None:
+        application = self._control_application_name(request.get("application"))
+        if request.get("confirmed") is not True:
+            raise ValueError("Confirma que quieres separar el audio de toda la aplicación.")
+        engine = self.controller.engine
+        source = engine.source if engine is not None else None
+        if isinstance(source, WindowPcmCapture):
+            source = source.audio
+        if not self.controller.running or self._current_state != SessionState.RUNNING or not isinstance(source, ProcessPcmCapture):
+            raise ValueError("Inicia el monitoreo con Audio de aplicación y espera a que llegue señal.")
+        target = source.target
+        if Path(target.executable).stem.casefold() != application:
+            raise ValueError("La aplicación indicada no coincide con la que se está monitoreando.")
+        if self.silent_audio.active or self._last_audio_level <= 0.0001:
+            raise ValueError("Comprueba que llegue señal de la aplicación y que la salida general esté activa.")
+        outputs = list_virtual_outputs()
+        if len(outputs) != 1:
+            raise ValueError("Se necesita un único VB-CABLE estándar disponible.")
+        lease = self.application_router.activate(target, outputs[0], wait=False)
+        self.status_label.setToolTip("Separación de audio solicitada.")
+        self._update_silent_controls()
+        QTimer.singleShot(6500, self, lambda: self._check_control_audio_route(lease))
+
+    def _check_control_audio_route(self, lease) -> None:
+        state = self.application_router.state
+        if state.get("lease") != lease or state.get("phase") not in ("requested", "preparing"):
+            return
+        try:
+            self.application_router.restore_original(wait=False)
+            self._status_detail = "La separación de audio agotó el plazo. Restauración solicitada."
+        except (OSError, RuntimeError):
+            self._status_detail = "Restauración de audio pendiente."
+        self.status_label.setToolTip(self._status_detail)
+        self._update_silent_controls()
+
+    def _control_audio_route(self) -> dict[str, Any]:
+        state = self.application_router.state
+        return {"phase": state.get("phase", "idle"),
+                "message": redact_text(state.get("error") or "")[:240]}
+
+    def _control_timer(self) -> dict[str, Any]:
+        return {"duration_seconds": self.stop_timer.duration_seconds, "stop_at_epoch": self.stop_timer.stop_at_epoch,
+                "remaining_seconds": self.stop_timer.remaining()}
 
     def _local_control_status(self) -> dict[str, Any]:
         elapsed = 0
@@ -2194,6 +2443,9 @@ class MainWindow(QMainWindow):
             "elapsed_seconds": elapsed,
             "transcript_fragments": len(self.controller.transcript_entries),
             "alert_count": len(self.alert_history.records()),
+            "audio_detected": self.controller.running and self._last_audio_level > 0.0001,
+            "audio_route": self._control_audio_route(),
+            "timer": self._control_timer(),
             "hotwords": [
                 {
                     "phrase": item.phrase,

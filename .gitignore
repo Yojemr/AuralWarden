@@ -42,6 +42,7 @@ cookies.txt
 secrets.json
 config.local.json
 startup-error.log
+data-location.json
 
 # Editors and operating systems
 .idea/

@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "verified_app_version": "1.6.0",
+  "control_protocol_version": 1,
+  "transport_protocol_version": 2,
+  "control_actions": ["capabilities", "status", "set_source", "set_hotwords", "start", "stop", "transcript", "alerts", "show", "list_windows", "list_audio_devices", "select_windows_source", "configure_session", "set_stop_timer", "create_clip", "save_transcript", "separate_audio", "restore_audio"],
+  "backend_commands": ["doctor", "gui", "simulate", "capture-test", "download-model", "download-diarization-models", "compare-audio", "monitor"],
+  "limits": {"transcript": 200, "alerts": 200, "hotwords": 100},
+  "reference": "references/functions.md"
+}
